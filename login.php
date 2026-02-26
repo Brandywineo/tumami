@@ -1,0 +1,58 @@
+<?php
+
+declare(strict_types=1);
+
+require __DIR__ . '/includes/bootstrap.php';
+require __DIR__ . '/db/database.php';
+
+use App\Repositories\UserRepository;
+
+if (isAuthenticated()) {
+    $role = currentUserRole();
+    redirect($role === 'runner' ? 'dashboard_runner.php' : 'dashboard_client.php');
+}
+
+$error = null;
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $email = strtolower(trim($_POST['email'] ?? ''));
+    $password = $_POST['password'] ?? '';
+
+    $repo = new UserRepository($pdo);
+    $user = $repo->findByEmail($email);
+
+    if (!$user || !password_verify($password, $user['password_hash'])) {
+        $error = 'Invalid login credentials.';
+    } elseif ($user['account_status'] !== 'active') {
+        $error = 'Your account is not active.';
+    } else {
+        loginUser((int) $user['id'], $user['role']);
+        setFlash('success', 'Welcome back.');
+        redirect($user['role'] === 'runner' ? 'dashboard_runner.php' : 'dashboard_client.php');
+    }
+}
+?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login | Tumami</title>
+    <link rel="stylesheet" href="assets/css/global.css">
+</head>
+<body>
+<?php require __DIR__ . '/includes/header.php'; ?>
+<section class="section">
+    <div class="container" style="max-width:560px;">
+        <h2>Login</h2>
+        <?php if ($error): ?><div class="card" style="border-left:4px solid #d63031; margin-bottom:16px;"><?php echo h($error); ?></div><?php endif; ?>
+        <form class="card" method="post">
+            <p><label>Email<br><input type="email" name="email" required style="width:100%;padding:10px;"></label></p>
+            <p><label>Password<br><input type="password" name="password" required style="width:100%;padding:10px;"></label></p>
+            <button class="cta-button" type="submit">Login</button>
+        </form>
+    </div>
+</section>
+<?php require __DIR__ . '/includes/footer.php'; ?>
+</body>
+</html>
