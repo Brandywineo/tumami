@@ -61,20 +61,39 @@ $messages = $stmt->fetchAll();
 <body>
 <?php require __DIR__ . '/includes/header.php'; ?>
 <section class="section">
-    <div class="container" style="max-width:760px;">
+    <div class="container" style="max-width:800px;">
         <h2>Task Chat #<?php echo (int) $taskId; ?></h2>
-        <div class="card" style="max-height:380px; overflow:auto; margin-bottom:16px;">
-            <?php foreach ($messages as $msg): ?>
-                <p><strong><?php echo h($msg['full_name']); ?>:</strong> <?php echo h($msg['message']); ?><br><small><?php echo h((string) $msg['created_at']); ?></small></p>
-            <?php endforeach; ?>
-            <?php if (!$messages): ?><p>No messages yet.</p><?php endif; ?>
+
+        <div class="chat-layout">
+            <div class="chat-header">Conversation</div>
+            <div class="chat-messages">
+                <?php foreach ($messages as $msg): ?>
+                    <?php $isOwn = (int) $msg['sender_id'] === $actorId; ?>
+                    <div class="chat-row <?php echo $isOwn ? 'chat-row--own' : ''; ?>">
+                        <article class="chat-bubble">
+                            <div class="chat-name"><?php echo h((string) $msg['full_name']); ?></div>
+                            <p class="chat-text"><?php echo nl2br(h((string) $msg['message'])); ?></p>
+                            <small class="chat-time"><?php echo h((string) $msg['created_at']); ?></small>
+                        </article>
+                    </div>
+                <?php endforeach; ?>
+                <?php if (!$messages): ?>
+                    <div class="chat-row">
+                        <article class="chat-bubble">
+                            <div class="chat-name">System</div>
+                            <p class="chat-text">No messages yet. Start the conversation.</p>
+                        </article>
+                    </div>
+                <?php endif; ?>
+            </div>
+
+            <form method="post" class="chat-form">
+                <?php echo csrf_field(); ?>
+                <input type="hidden" name="task_id" value="<?php echo (int) $taskId; ?>">
+                <textarea name="message" required placeholder="Type a message..."></textarea>
+                <button class="cta-button" type="submit">Send</button>
+            </form>
         </div>
-        <form method="post" class="card">
-            <?php echo csrf_field(); ?>
-            <input type="hidden" name="task_id" value="<?php echo (int) $taskId; ?>">
-            <p><textarea name="message" required style="width:100%;padding:10px;min-height:110px;" placeholder="Write message..."></textarea></p>
-            <button class="cta-button" type="submit">Send</button>
-        </form>
     </div>
 </section>
 <?php require __DIR__ . '/includes/footer.php'; ?>
