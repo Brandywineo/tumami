@@ -14,7 +14,7 @@ $taskRepo = new TaskRepository($pdo);
 $walletService = new WalletService($pdo);
 
 $tasks = $taskRepo->byRunner((int) currentUserId());
-$availableTasks = $taskRepo->browsePosted();
+$availableTasks = $taskRepo->browsePostedForRunner((int) currentUserId());
 $active = array_filter($tasks, static fn (array $t): bool => in_array($t['status'], ['accepted', 'in_progress', 'awaiting_confirmation'], true));
 $balances = $walletService->balances((int) currentUserId());
 ?>
@@ -44,6 +44,8 @@ $balances = $walletService->balances((int) currentUserId());
                     <h3><?php echo h($task['title']); ?></h3>
                     <p><strong>Status:</strong> <?php echo h($task['status']); ?></p>
                     <p><strong>Client:</strong> <?php echo h($task['client_name']); ?></p>
+                    <p><strong>Service Area:</strong> <?php echo h($task['zone_name']); ?></p>
+                    <p><a class="cta-button" href="task_chat.php?task_id=<?php echo (int) $task['id']; ?>">Open Chat</a> <a class="cta-button" href="task_tracking.php?task_id=<?php echo (int) $task['id']; ?>">Share Location</a></p>
                     <?php if ($task['status'] === 'accepted'): ?>
                         <form method="post" action="task_status.php">
                             <?php echo csrf_field(); ?>

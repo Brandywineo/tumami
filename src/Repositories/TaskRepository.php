@@ -14,7 +14,47 @@ class TaskRepository
 
     public function create(array $data): int
     {
-        $stmt = $this->pdo->prepare('INSERT INTO tasks (client_id, zone_id, category, title, description, runner_fee, deadline, status) VALUES (:client_id, :zone_id, :category, :title, :description, :runner_fee, :deadline, "posted")');
+        $stmt = $this->pdo->prepare('INSERT INTO tasks (
+            client_id,
+            zone_id,
+            client_zone_id,
+            pickup_zone_id,
+            dropoff_zone_id,
+            category,
+            title,
+            description,
+            pickup_address,
+            dropoff_address,
+            runner_fee,
+            deadline,
+            client_latitude,
+            client_longitude,
+            pickup_latitude,
+            pickup_longitude,
+            dropoff_latitude,
+            dropoff_longitude,
+            status
+        ) VALUES (
+            :client_id,
+            :zone_id,
+            :client_zone_id,
+            :pickup_zone_id,
+            :dropoff_zone_id,
+            :category,
+            :title,
+            :description,
+            :pickup_address,
+            :dropoff_address,
+            :runner_fee,
+            :deadline,
+            :client_latitude,
+            :client_longitude,
+            :pickup_latitude,
+            :pickup_longitude,
+            :dropoff_latitude,
+            :dropoff_longitude,
+            "posted"
+        )');
         $stmt->execute($data);
 
         return (int) $this->pdo->lastInsertId();
@@ -23,18 +63,55 @@ class TaskRepository
     public function browsePosted(?int $zoneId = null): array
     {
         if ($zoneId !== null) {
-            $stmt = $this->pdo->prepare('SELECT t.*, u.full_name AS client_name, z.name AS zone_name FROM tasks t JOIN users u ON u.id = t.client_id JOIN zones z ON z.id = t.zone_id WHERE t.status = "posted" AND t.zone_id = :zone_id ORDER BY t.created_at DESC');
+            $stmt = $this->pdo->prepare('SELECT t.*, u.full_name AS client_name, z.name AS zone_name, cz.name AS client_zone_name FROM tasks t JOIN users u ON u.id = t.client_id JOIN zones z ON z.id = t.zone_id LEFT JOIN zones cz ON cz.id = t.client_zone_id WHERE t.status = "posted" AND t.zone_id = :zone_id ORDER BY t.created_at DESC');
             $stmt->execute(['zone_id' => $zoneId]);
             return $stmt->fetchAll();
         }
 
-        $stmt = $this->pdo->query('SELECT t.*, u.full_name AS client_name, z.name AS zone_name FROM tasks t JOIN users u ON u.id = t.client_id JOIN zones z ON z.id = t.zone_id WHERE t.status = "posted" ORDER BY t.created_at DESC');
+        $stmt = $this->pdo->query('SELECT t.*, u.full_name AS client_name, z.name AS zone_name, cz.name AS client_zone_name FROM tasks t JOIN users u ON u.id = t.client_id JOIN zones z ON z.id = t.zone_id LEFT JOIN zones cz ON cz.id = t.client_zone_id WHERE t.status = "posted" ORDER BY t.created_at DESC');
+        return $stmt->fetchAll();
+    }
+
+    public function browsePostedForRunner(int $runnerId, ?int $zoneId = null): array
+    {
+        $runnerStmt = $this->pdo->prepare('SELECT active_zone_id, accepts_adjacent_zones FROM runner_profiles WHERE user_id = :user_id LIMIT 1');
+        $runnerStmt->execute(['user_id' => $runnerId]);
+        $runner = $runnerStmt->fetch() ?: ['active_zone_id' => null, 'accepts_adjacent_zones' => 1];
+
+        $params = [];
+        $where = 't.status = "posted"';
+        if ($zoneId !== null) {
+            $where .= ' AND t.zone_id = :zone_id';
+            $params['zone_id'] = $zoneId;
+        }
+
+        $sql = 'SELECT
+            t.*,
+            u.full_name AS client_name,
+            z.name AS zone_name,
+            cz.name AS client_zone_name,
+            CASE WHEN rp.active_zone_id IS NOT NULL AND t.zone_id = rp.active_zone_id THEN 1 ELSE 0 END AS is_runner_zone,
+            CASE WHEN rp.active_zone_id IS NOT NULL AND pz.parent_id = rz.parent_id AND rp.accepts_adjacent_zones = 1 THEN 1 ELSE 0 END AS is_adjacent_zone
+        FROM tasks t
+        JOIN users u ON u.id = t.client_id
+        JOIN zones z ON z.id = t.zone_id
+        LEFT JOIN zones cz ON cz.id = t.client_zone_id
+        LEFT JOIN runner_profiles rp ON rp.user_id = :runner_id
+        LEFT JOIN zones pz ON pz.id = t.zone_id
+        LEFT JOIN zones rz ON rz.id = rp.active_zone_id
+        WHERE ' . $where . '
+        ORDER BY is_runner_zone DESC, is_adjacent_zone DESC, t.created_at DESC';
+
+        $params['runner_id'] = $runnerId;
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute($params);
+
         return $stmt->fetchAll();
     }
 
     public function byClient(int $clientId): array
     {
-        $stmt = $this->pdo->prepare('SELECT t.*, z.name AS zone_name, ru.full_name AS runner_name FROM tasks t JOIN zones z ON z.id = t.zone_id LEFT JOIN users ru ON ru.id = t.runner_id WHERE t.client_id = :client_id ORDER BY t.created_at DESC');
+        $stmt = $this->pdo->prepare('SELECT t.*, z.name AS zone_name, cz.name AS client_zone_name, ru.full_name AS runner_name FROM tasks t JOIN zones z ON z.id = t.zone_id LEFT JOIN zones cz ON cz.id = t.client_zone_id LEFT JOIN users ru ON ru.id = t.runner_id WHERE t.client_id = :client_id ORDER BY t.created_at DESC');
         $stmt->execute(['client_id' => $clientId]);
 
         return $stmt->fetchAll();
@@ -42,7 +119,7 @@ class TaskRepository
 
     public function byRunner(int $runnerId): array
     {
-        $stmt = $this->pdo->prepare('SELECT t.*, z.name AS zone_name, cu.full_name AS client_name FROM tasks t JOIN zones z ON z.id = t.zone_id JOIN users cu ON cu.id = t.client_id WHERE t.runner_id = :runner_id ORDER BY t.updated_at DESC, t.created_at DESC');
+        $stmt = $this->pdo->prepare('SELECT t.*, z.name AS zone_name, cz.name AS client_zone_name, cu.full_name AS client_name FROM tasks t JOIN zones z ON z.id = t.zone_id LEFT JOIN zones cz ON cz.id = t.client_zone_id JOIN users cu ON cu.id = t.client_id WHERE t.runner_id = :runner_id ORDER BY t.updated_at DESC, t.created_at DESC');
         $stmt->execute(['runner_id' => $runnerId]);
 
         return $stmt->fetchAll();

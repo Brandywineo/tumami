@@ -11,6 +11,8 @@ $flash = getFlash();
                 <a href="dashboard_client.php">Client Dashboard</a>
                 <a href="dashboard_runner.php">Runner Dashboard</a>
                 <a href="browse_tasks.php">Browse Tasks</a>
+                <a href="active_runners.php">Active Runners</a>
+                <a href="chats.php">Chat</a>
                 <form method="post" action="logout.php" style="display:inline-block; margin-left:20px;">
                     <?php echo csrf_field(); ?>
                     <button type="submit" style="background:none;border:none;color:#333;font-weight:500;cursor:pointer;padding:0;">Logout</button>

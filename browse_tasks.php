@@ -11,7 +11,7 @@ requireRole(['runner', 'both']);
 
 $taskRepo = new TaskRepository($pdo);
 $zoneId = isset($_GET['zone_id']) && $_GET['zone_id'] !== '' ? (int) $_GET['zone_id'] : null;
-$tasks = $taskRepo->browsePosted($zoneId);
+$tasks = $taskRepo->browsePostedForRunner((int) currentUserId(), $zoneId);
 $zones = $pdo->query('SELECT id, name FROM zones WHERE is_active = 1 ORDER BY name')->fetchAll();
 ?>
 <!DOCTYPE html>
@@ -26,10 +26,11 @@ $zones = $pdo->query('SELECT id, name FROM zones WHERE is_active = 1 ORDER BY na
 <section class="section">
     <div class="container">
         <h2>Available Tasks</h2>
+        <p>Jobs in your current/service area are ranked first.</p>
         <form class="card" method="get" style="margin-bottom:20px;">
-            <label>Filter by zone
+            <label>Filter by service area
                 <select name="zone_id" style="padding:8px; margin:0 10px;">
-                    <option value="">All zones</option>
+                    <option value="">All areas</option>
                     <?php foreach ($zones as $zone): ?>
                         <option value="<?php echo (int) $zone['id']; ?>" <?php echo $zoneId === (int) $zone['id'] ? 'selected' : ''; ?>><?php echo h($zone['name']); ?></option>
                     <?php endforeach; ?>
@@ -44,7 +45,9 @@ $zones = $pdo->query('SELECT id, name FROM zones WHERE is_active = 1 ORDER BY na
                 <article class="card">
                     <h3><?php echo h($task['title']); ?></h3>
                     <p><?php echo h($task['description']); ?></p>
-                    <p><strong>Zone:</strong> <?php echo h($task['zone_name']); ?></p>
+                    <p><strong>Service Area:</strong> <?php echo h($task['zone_name']); ?></p>
+                    <p><strong>Client Area:</strong> <?php echo h($task['client_zone_name'] ?? 'N/A'); ?></p>
+                    <?php if ((int) $task['is_runner_zone'] === 1): ?><p><strong>Priority:</strong> In your area</p><?php endif; ?>
                     <p><strong>Budget:</strong> KES <?php echo number_format((float) $task['runner_fee'], 2); ?></p>
                     <p><strong>Client:</strong> <?php echo h($task['client_name']); ?></p>
                     <form method="post" action="accept_task.php">
