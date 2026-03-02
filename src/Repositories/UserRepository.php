@@ -23,7 +23,13 @@ class UserRepository
             'role' => $role,
         ]);
 
-        return (int) $this->pdo->lastInsertId();
+        $userId = (int) $this->pdo->lastInsertId();
+        if (in_array($role, ['runner', 'both'], true)) {
+            $profileStmt = $this->pdo->prepare('INSERT INTO runner_profiles (user_id, is_available) VALUES (:user_id, 1)');
+            $profileStmt->execute(['user_id' => $userId]);
+        }
+
+        return $userId;
     }
 
     public function findByEmail(string $email): ?array
@@ -33,5 +39,45 @@ class UserRepository
         $user = $stmt->fetch();
 
         return $user ?: null;
+    }
+
+    public function activeRunners(?int $zoneId = null, string $sort = 'rating'): array
+    {
+        $where = 'rp.is_available = 1';
+        $params = [];
+        if ($zoneId !== null) {
+            $where .= ' AND (rp.active_zone_id = :zone_id OR u.current_zone_id = :zone_id)';
+            $params['zone_id'] = $zoneId;
+        }
+
+        $order = match ($sort) {
+            'tasks' => 'rp.total_tasks_completed DESC, u.rating DESC',
+            'fee_low' => 'rp.reliability_score DESC, u.rating DESC',
+            default => 'u.rating DESC, u.rating_count DESC, rp.total_tasks_completed DESC',
+        };
+
+        $sql = 'SELECT
+            u.id,
+            u.full_name,
+            u.rating,
+            u.rating_count,
+            u.current_zone_id,
+            z.name AS active_zone_name,
+            rp.vehicle_type,
+            rp.radius_km,
+            rp.total_tasks_completed,
+            rp.reliability_score,
+            rp.accepts_adjacent_zones,
+            rp.location_updated_at
+        FROM users u
+        JOIN runner_profiles rp ON rp.user_id = u.id
+        LEFT JOIN zones z ON z.id = COALESCE(rp.active_zone_id, u.current_zone_id)
+        WHERE ' . $where . '
+        ORDER BY ' . $order;
+
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute($params);
+
+        return $stmt->fetchAll();
     }
 }
