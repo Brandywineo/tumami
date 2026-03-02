@@ -26,7 +26,10 @@ $completed = array_filter($tasks, static fn (array $t): bool => $t['status'] ===
 <section class="section">
     <div class="container">
         <h2>Client Dashboard</h2>
-        <p><a class="cta-button" href="post_task.php">Post New Task</a></p>
+        <p>
+            <a class="cta-button" href="post_task.php">Post New Task</a>
+            <a class="cta-button" href="active_runners.php" style="margin-left:12px;">View Active Runners</a>
+        </p>
         <div class="grid">
             <article class="card"><h3>Active Tasks</h3><p><?php echo count($active); ?></p></article>
             <article class="card"><h3>Completed Tasks</h3><p><?php echo count($completed); ?></p></article>
@@ -39,7 +42,8 @@ $completed = array_filter($tasks, static fn (array $t): bool => $t['status'] ===
                 <article class="card">
                     <h3><?php echo h($task['title']); ?></h3>
                     <p><strong>Status:</strong> <?php echo h($task['status']); ?></p>
-                    <p><strong>Zone:</strong> <?php echo h($task['zone_name']); ?></p>
+                    <p><strong>Service Area:</strong> <?php echo h($task['zone_name']); ?></p>
+                    <p><strong>Client Area:</strong> <?php echo h($task['client_zone_name'] ?? 'N/A'); ?></p>
                     <p><strong>Runner:</strong> <?php echo h($task['runner_name'] ?? 'Unassigned'); ?></p>
                     <?php if ($task['status'] === 'awaiting_confirmation'): ?>
                         <form method="post" action="task_status.php">
