@@ -17,6 +17,10 @@ $tasks = $taskRepo->byRunner((int) currentUserId());
 $availableTasks = $taskRepo->browsePostedForRunner((int) currentUserId());
 $active = array_filter($tasks, static fn (array $t): bool => in_array($t['status'], ['accepted', 'in_progress', 'awaiting_confirmation'], true));
 $balances = $walletService->balances((int) currentUserId());
+$trackableTaskIds = array_values(array_map(
+    static fn (array $task): int => (int) $task['id'],
+    array_filter($tasks, static fn (array $t): bool => in_array($t['status'], ['accepted', 'in_progress'], true))
+));
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -37,6 +41,12 @@ $balances = $walletService->balances((int) currentUserId());
         </div>
 
         <h3 style="margin-top:30px;">My Assigned Tasks</h3>
+        <article class="card" style="margin-bottom:20px;">
+            <h3>Live Location Sharing</h3>
+            <p>Tracking starts at <strong>accepted</strong>. Keep this page open while actively running tasks so clients can see your exact location.</p>
+            <button class="cta-button" id="start-location-sharing" type="button">Enable Location Sharing</button>
+            <p id="location-sharing-status" style="margin-top:10px;"><?php echo $trackableTaskIds ? 'Ready to share for active tasks.' : 'No accepted/in-progress tasks to share right now.'; ?></p>
+        </article>
         <div class="grid">
             <?php if (!$tasks): ?><p>You have no assigned tasks.</p><?php endif; ?>
             <?php foreach ($tasks as $task): ?>
@@ -67,5 +77,83 @@ $balances = $walletService->balances((int) currentUserId());
     </div>
 </section>
 <?php require __DIR__ . '/includes/footer.php'; ?>
+<script>
+(() => {
+    const taskIds = <?php echo json_encode($trackableTaskIds, JSON_THROW_ON_ERROR); ?>;
+    const startButton = document.getElementById('start-location-sharing');
+    const statusEl = document.getElementById('location-sharing-status');
+
+    if (!startButton || !statusEl || taskIds.length === 0) {
+        if (startButton) {
+            startButton.disabled = true;
+            startButton.style.opacity = '0.6';
+            startButton.style.cursor = 'not-allowed';
+        }
+        return;
+    }
+
+    let lastSentAt = 0;
+    const sendIntervalMs = 5000;
+
+    async function sendLocation(lat, lng, accuracy) {
+        const now = Date.now();
+        if (now - lastSentAt < sendIntervalMs) {
+            return;
+        }
+
+        lastSentAt = now;
+        statusEl.textContent = 'Sharing live location…';
+
+        try {
+            const response = await fetch('runner_location_update.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
+                body: JSON.stringify({
+                    task_ids: taskIds,
+                    latitude: lat,
+                    longitude: lng,
+                    accuracy: accuracy
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error('Location update failed');
+            }
+
+            statusEl.textContent = 'Location shared successfully.';
+        } catch (error) {
+            statusEl.textContent = 'Unable to send location. Check your network and keep this page open.';
+        }
+    }
+
+    startButton.addEventListener('click', () => {
+        if (!navigator.geolocation) {
+            statusEl.textContent = 'Geolocation is not supported on this device/browser.';
+            return;
+        }
+
+        startButton.disabled = true;
+        startButton.style.opacity = '0.6';
+        statusEl.textContent = 'Requesting location permission…';
+
+        navigator.geolocation.watchPosition(
+            (position) => {
+                sendLocation(
+                    position.coords.latitude,
+                    position.coords.longitude,
+                    position.coords.accuracy ?? null
+                );
+            },
+            () => {
+                statusEl.textContent = 'Location permission denied or unavailable. Please allow location to enable tracking.';
+                startButton.disabled = false;
+                startButton.style.opacity = '1';
+            },
+            { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 }
+        );
+    });
+})();
+</script>
 </body>
 </html>

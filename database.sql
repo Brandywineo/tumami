@@ -136,6 +136,20 @@ CREATE TABLE task_messages (
     INDEX idx_task_messages_task (task_id, created_at)
 ) ENGINE=InnoDB;
 
+CREATE TABLE task_runner_locations (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    task_id BIGINT UNSIGNED NOT NULL,
+    runner_id BIGINT UNSIGNED NOT NULL,
+    latitude DECIMAL(10,7) NOT NULL,
+    longitude DECIMAL(10,7) NOT NULL,
+    accuracy_meters DECIMAL(8,2) NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_task_runner_locations_task FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE,
+    CONSTRAINT fk_task_runner_locations_runner FOREIGN KEY (runner_id) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX idx_task_runner_locations_task_created (task_id, created_at),
+    INDEX idx_task_runner_locations_runner_created (runner_id, created_at)
+) ENGINE=InnoDB;
+
 CREATE TABLE wallet_transactions (
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     user_id BIGINT UNSIGNED NOT NULL,
