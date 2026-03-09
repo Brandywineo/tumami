@@ -5,16 +5,27 @@ $flash = getFlash();
 ?>
 <header class="header">
     <div class="container header__inner">
-        <div class="logo"><a href="index.php" style="text-decoration:none;color:inherit;"><?php echo h(appName()); ?></a></div>
-        <nav class="nav" aria-label="Main navigation">
+        <div class="logo"><a href="index.php" class="logo__link"><?php echo h(appName()); ?></a></div>
+        <button
+            type="button"
+            class="nav-toggle"
+            aria-expanded="false"
+            aria-controls="site-nav"
+            aria-label="Toggle navigation"
+            data-nav-toggle
+        >
+            ☰
+        </button>
+        <nav class="nav" id="site-nav" aria-label="Main navigation" data-nav>
             <?php if (isAuthenticated()): ?>
                 <a href="dashboard_client.php">Client Dashboard</a>
                 <a href="dashboard_runner.php">Runner Dashboard</a>
                 <a href="browse_tasks.php">Browse Tasks</a>
                 <a href="active_runners.php">Active Runners</a>
-                <form method="post" action="logout.php" style="display:inline-block; margin-left:20px;">
+                <a href="settings.php">Settings</a>
+                <form method="post" action="logout.php" class="logout-form">
                     <?php echo csrf_field(); ?>
-                    <button type="submit" style="background:none;border:none;color:#333;font-weight:500;cursor:pointer;padding:0;">Logout</button>
+                    <button type="submit" class="logout-button">Logout</button>
                 </form>
             <?php else: ?>
                 <a href="login.php">Login</a>
@@ -30,3 +41,4 @@ $flash = getFlash();
         </div>
     </div>
 <?php endif; ?>
+<script src="assets/js/header.js" defer></script>

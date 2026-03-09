@@ -9,6 +9,15 @@
     --footer-bg: #0a1f33;
 }
 
+html[data-theme='dark'] {
+    --text-color: #e8edf3;
+    --muted-text: #b5c0cf;
+    --surface: #111826;
+    --surface-alt: #1a2436;
+    --page-bg: #0a101a;
+    --footer-bg: #070d17;
+}
+
 * {
     box-sizing: border-box;
 }
@@ -36,6 +45,7 @@ body {
     justify-content: space-between;
     align-items: center;
     padding: 15px 0;
+    position: relative;
 }
 
 .logo {
@@ -44,10 +54,31 @@ body {
     color: var(--brand-primary);
 }
 
-.nav a {
-    margin-left: 20px;
+.logo__link {
     text-decoration: none;
-    color: #333;
+    color: inherit;
+}
+
+.nav-toggle {
+    display: none;
+    border: 1px solid #d8e0ea;
+    background: var(--surface);
+    border-radius: 6px;
+    padding: 6px 10px;
+    cursor: pointer;
+    font-size: 20px;
+    color: var(--text-color);
+}
+
+.nav {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.nav a {
+    text-decoration: none;
+    color: var(--text-color);
     font-weight: 500;
 }
 
@@ -56,6 +87,19 @@ body {
     color: #fff;
     padding: 8px 15px;
     border-radius: 5px;
+}
+
+.logout-form {
+    display: inline-block;
+}
+
+.logout-button {
+    background: none;
+    border: none;
+    color: var(--text-color);
+    font-weight: 500;
+    cursor: pointer;
+    padding: 0;
 }
 
 .hero {
@@ -177,12 +221,22 @@ body {
 }
 
 @media (max-width: 768px) {
-    .header__inner {
-        flex-direction: column;
-        gap: 10px;
+    .nav-toggle {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
     }
 
-    .nav a {
-        margin: 0 8px;
+    .nav {
+        display: none;
+        width: 100%;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+        padding-top: 10px;
+    }
+
+    .nav--open {
+        display: flex;
     }
 }

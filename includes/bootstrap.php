@@ -25,3 +25,4 @@ spl_autoload_register(static function (string $class): void {
 require_once __DIR__ . '/helpers.php';
 require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/csrf.php';
+require_once __DIR__ . '/theme.php';
