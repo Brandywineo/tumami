@@ -5,6 +5,7 @@ declare(strict_types=1);
 require __DIR__ . '/includes/bootstrap.php';
 require __DIR__ . '/db/database.php';
 
+use App\Flows\Auth\LoginFlow;
 use App\Repositories\UserRepository;
 
 if (isAuthenticated()) {
@@ -15,21 +16,21 @@ if (isAuthenticated()) {
 $error = null;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $email = strtolower(trim($_POST['email'] ?? ''));
-    $password = $_POST['password'] ?? '';
-
-    $repo = new UserRepository($pdo);
-    $user = $repo->findByEmail($email);
-
-    if (!$user || !password_verify($password, $user['password_hash'])) {
-        $error = 'Invalid login credentials.';
-    } elseif ($user['account_status'] !== 'active') {
-        $error = 'Your account is not active.';
+    if (!csrf_validate($_POST['_csrf'] ?? null)) {
+        $error = 'Security validation failed. Please refresh and try again.';
     } else {
-        loginUser((int) $user['id'], $user['role']);
-        unset($_SESSION['_csrf_token']);
-        setFlash('success', 'Welcome back.');
-        redirect($user['role'] === 'runner' ? 'dashboard_runner.php' : 'dashboard_client.php');
+        $flow = new LoginFlow(new UserRepository($pdo));
+        $result = $flow->authenticate((string) ($_POST['email'] ?? ''), (string) ($_POST['password'] ?? ''));
+
+        if (!$result['ok']) {
+            $error = $result['error'];
+        } else {
+            $user = $result['user'];
+            loginUser((int) $user['id'], $user['role']);
+            unset($_SESSION['_csrf_token']);
+            setFlash('success', 'Welcome back.');
+            redirect($user['role'] === 'runner' ? 'dashboard_runner.php' : 'dashboard_client.php');
+        }
     }
 }
 ?>
@@ -48,6 +49,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <h2>Login</h2>
         <?php if ($error): ?><div class="card" style="border-left:4px solid #d63031; margin-bottom:16px;"><?php echo h($error); ?></div><?php endif; ?>
         <form class="card" method="post">
+            <?php echo csrf_field(); ?>
             <p><label>Email<br><input type="email" name="email" required style="width:100%;padding:10px;"></label></p>
             <p><label>Password<br><input type="password" name="password" required style="width:100%;padding:10px;"></label></p>
             <button class="cta-button" type="submit">Login</button>

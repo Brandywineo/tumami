@@ -5,6 +5,7 @@ declare(strict_types=1);
 require __DIR__ . '/includes/bootstrap.php';
 require __DIR__ . '/db/database.php';
 
+use App\Flows\Auth\RegistrationFlow;
 use App\Repositories\UserRepository;
 
 if (isAuthenticated()) {
@@ -14,32 +15,19 @@ if (isAuthenticated()) {
 $errors = [];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $fullName = trim($_POST['full_name'] ?? '');
-    $email = strtolower(trim($_POST['email'] ?? ''));
-    $phone = trim($_POST['phone'] ?? '');
-    $role = $_POST['role'] ?? 'client';
-    $password = $_POST['password'] ?? '';
+    if (!csrf_validate($_POST['_csrf'] ?? null)) {
+        $errors[] = 'Security validation failed. Please refresh and try again.';
+    } else {
+        $flow = new RegistrationFlow(new UserRepository($pdo));
+        $result = $flow->register($_POST);
 
-    if ($fullName === '' || $email === '' || $phone === '' || $password === '') {
-        $errors[] = 'All fields are required.';
-    }
-    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-        $errors[] = 'Invalid email address.';
-    }
-    if (!in_array($role, ['client', 'runner', 'both'], true)) {
-        $errors[] = 'Invalid role selected.';
-    }
-
-    if ($errors === []) {
-        $repo = new UserRepository($pdo);
-        if ($repo->findByEmail($email)) {
-            $errors[] = 'Email already registered.';
+        if (!$result['ok']) {
+            $errors = $result['errors'];
         } else {
-            $userId = $repo->create($fullName, $email, $phone, password_hash($password, PASSWORD_DEFAULT), $role);
-            loginUser($userId, $role);
+            loginUser((int) $result['user_id'], $result['role']);
             unset($_SESSION['_csrf_token']);
             setFlash('success', 'Welcome to Tumami. Your account has been created.');
-            redirect($role === 'runner' ? 'dashboard_runner.php' : 'dashboard_client.php');
+            redirect($result['role'] === 'runner' ? 'dashboard_runner.php' : 'dashboard_client.php');
         }
     }
 }
@@ -65,6 +53,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </div>
         <?php endif; ?>
         <form class="card" method="post">
+            <?php echo csrf_field(); ?>
             <p><label>Full name<br><input type="text" name="full_name" required style="width:100%;padding:10px;"></label></p>
             <p><label>Email<br><input type="email" name="email" required style="width:100%;padding:10px;"></label></p>
             <p><label>Phone<br><input type="text" name="phone" required style="width:100%;padding:10px;"></label></p>

@@ -32,6 +32,26 @@ class UserRepository
         return $userId;
     }
 
+
+
+    public function findById(int $id): ?array
+    {
+        $stmt = $this->pdo->prepare('SELECT * FROM users WHERE id = :id LIMIT 1');
+        $stmt->execute(['id' => $id]);
+        $user = $stmt->fetch();
+
+        return $user ?: null;
+    }
+
+    public function updatePasswordHash(int $userId, string $passwordHash): void
+    {
+        $stmt = $this->pdo->prepare('UPDATE users SET password_hash = :password_hash WHERE id = :id LIMIT 1');
+        $stmt->execute([
+            'password_hash' => $passwordHash,
+            'id' => $userId,
+        ]);
+    }
+
     public function findByEmail(string $email): ?array
     {
         $stmt = $this->pdo->prepare('SELECT * FROM users WHERE email = :email LIMIT 1');

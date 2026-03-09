@@ -16,6 +16,10 @@ $zones = $pdo->query('SELECT id, name, parent_id FROM zones WHERE is_active = 1 
 
 $errors = [];
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (!csrf_validate($_POST['_csrf'] ?? null)) {
+        $errors[] = 'Security validation failed. Please refresh and try again.';
+    }
+
     $data = [
         'client_id' => (int) currentUserId(),
         'zone_id' => (int) ($_POST['service_zone_id'] ?? 0),
@@ -66,6 +70,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <h2>Post a New Task</h2>
         <?php if ($errors): ?><div class="card" style="border-left:4px solid #d63031;"><?php foreach ($errors as $error): ?><p><?php echo h($error); ?></p><?php endforeach; ?></div><?php endif; ?>
         <form method="post" class="card">
+            <?php echo csrf_field(); ?>
             <p><label>Title<br><input name="title" required style="width:100%;padding:10px;"></label></p>
             <p><label>Description<br><textarea name="description" required style="width:100%;padding:10px;min-height:120px;"></textarea></label></p>
             <p><label>Your Current Area (Client Area)<br><select name="client_zone_id" style="width:100%;padding:10px;"><option value="">Select area</option><?php foreach ($zones as $zone): ?><option value="<?php echo (int) $zone['id']; ?>"><?php echo h($zone['name']); ?></option><?php endforeach; ?></select></label></p>
