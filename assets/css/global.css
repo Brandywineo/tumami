@@ -240,3 +240,22 @@ body {
         display: flex;
     }
 }
+
+.dashboard-hero {
+    border: 1px solid rgba(10, 102, 194, 0.15);
+    background: linear-gradient(135deg, rgba(10, 102, 194, 0.08), rgba(10, 102, 194, 0.02));
+}
+
+.card {
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.08);
+}
+
+html[data-theme='dark'] .dashboard-hero {
+    border-color: rgba(110, 168, 254, 0.25);
+    background: linear-gradient(135deg, rgba(110, 168, 254, 0.15), rgba(17, 24, 38, 0.6));
+}
