@@ -42,4 +42,7 @@ $flash = getFlash();
         </div>
     </div>
 <?php endif; ?>
+<script>
+window.TUMAMI_IS_AUTHENTICATED = <?php echo isAuthenticated() ? 'true' : 'false'; ?>;
+</script>
 <script src="assets/js/header.js" defer></script>
