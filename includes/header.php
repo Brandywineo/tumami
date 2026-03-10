@@ -22,6 +22,7 @@ $flash = getFlash();
                 <a href="dashboard_runner.php">Runner Dashboard</a>
                 <a href="browse_tasks.php">Browse Tasks</a>
                 <a href="active_runners.php">Active Runners</a>
+                <a href="topup.php">Top Up</a>
                 <a href="settings.php">Settings</a>
                 <form method="post" action="logout.php" class="logout-form">
                     <?php echo csrf_field(); ?>
