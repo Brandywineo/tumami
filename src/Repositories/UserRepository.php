@@ -61,7 +61,7 @@ class UserRepository
         return $user ?: null;
     }
 
-    public function activeRunners(?int $zoneId = null, string $sort = 'rating'): array
+    public function activeRunners(?int $zoneId = null, string $sort = 'rating', ?float $latitude = null, ?float $longitude = null): array
     {
         $where = 'rp.is_available = 1';
         $params = [];
@@ -70,11 +70,28 @@ class UserRepository
             $params['zone_id'] = $zoneId;
         }
 
+        $hasDistance = $latitude !== null && $longitude !== null;
+
+        $distanceSql = 'NULL AS distance_km';
+        if ($hasDistance) {
+            $distanceSql = '(6371 * ACOS(
+                COS(RADIANS(:lat)) * COS(RADIANS(COALESCE(rp.latitude, u.latitude))) * COS(RADIANS(COALESCE(rp.longitude, u.longitude)) - RADIANS(:lng)) +
+                SIN(RADIANS(:lat)) * SIN(RADIANS(COALESCE(rp.latitude, u.latitude)))
+            )) AS distance_km';
+            $params['lat'] = $latitude;
+            $params['lng'] = $longitude;
+            $where .= ' AND COALESCE(rp.latitude, u.latitude) IS NOT NULL AND COALESCE(rp.longitude, u.longitude) IS NOT NULL';
+        }
+
         $order = match ($sort) {
             'tasks' => 'rp.total_tasks_completed DESC, u.rating DESC',
             'fee_low' => 'rp.reliability_score DESC, u.rating DESC',
             default => 'u.rating DESC, u.rating_count DESC, rp.total_tasks_completed DESC',
         };
+
+        if ($hasDistance) {
+            $order = 'distance_km ASC, ' . $order;
+        }
 
         $sql = 'SELECT
             u.id,
@@ -88,7 +105,8 @@ class UserRepository
             rp.total_tasks_completed,
             rp.reliability_score,
             rp.accepts_adjacent_zones,
-            rp.location_updated_at
+            rp.location_updated_at,
+            ' . $distanceSql . '
         FROM users u
         JOIN runner_profiles rp ON rp.user_id = u.id
         LEFT JOIN zones z ON z.id = COALESCE(rp.active_zone_id, u.current_zone_id)

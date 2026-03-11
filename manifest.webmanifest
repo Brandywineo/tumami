@@ -1,0 +1,12 @@
+{
+  "name": "tumame",
+  "short_name": "tumami",
+  "description": "Tumami errands platform",
+  "start_url": "/index.php",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f7f9fc",
+  "theme_color": "#0a66c2",
+  "orientation": "portrait-primary",
+  "icons": []
+}
