@@ -35,51 +35,52 @@ $mapboxToken = trim((string) (getenv('MAPBOX_PUBLIC_TOKEN') ?: ''));
 </head>
 <body>
 <?php require __DIR__ . '/includes/header.php'; ?>
-<section class="section">
-    <div class="container">
-        <div class="dashboard-hero card" style="margin-bottom:18px;">
-            <h2 style="text-align:left; margin:0;">Welcome, <?php echo h($user['full_name'] ?? 'Client'); ?> 👋</h2>
-            <p style="margin:8px 0 0;">Manage your orders, pick runners, and track jobs in one place.</p>
+<section class="section section--compact">
+    <div class="container container--mobile-dense">
+        <div class="dashboard-hero card card--compact">
+            <h2 class="dashboard-title">Welcome, <?php echo h($user['full_name'] ?? 'Client'); ?> 👋</h2>
+            <p class="dashboard-subtitle">Manage errands, pick runners, and track jobs live.</p>
         </div>
 
-        <div class="grid" style="margin-bottom:18px;">
-            <article class="card">
-                <h3>Wallet Balance</h3>
-                <p style="font-size:28px; margin:8px 0 14px;"><strong>KES <?php echo number_format($balances['available'], 2); ?></strong></p>
-                <a class="cta-button" href="topup.php">Add Balance</a>
+        <div class="grid grid--dashboard">
+            <article class="card card--compact">
+                <h3>Wallet</h3>
+                <p class="stat-value">KES <?php echo number_format($balances['available'], 2); ?></p>
+                <a class="cta-button cta-button--block" href="topup.php">Add Balance</a>
             </article>
-            <article class="card">
+            <article class="card card--compact">
                 <h3>Quick Actions</h3>
-                <p style="margin-bottom:14px;">Start fast from here.</p>
-                <a class="cta-button" href="post_task.php">Post Task</a>
-                <a class="cta-button" href="active_runners.php" style="margin-left:10px;">Choose Runner</a>
+                <div class="button-stack">
+                    <a class="cta-button cta-button--block" href="post_task.php">Post Task</a>
+                    <a class="cta-button cta-button--block cta-button--muted" href="active_runners.php">Choose Runner</a>
+                </div>
             </article>
-            <article class="card">
-                <h3>Task Snapshot</h3>
+            <article class="card card--compact">
+                <h3>Snapshot</h3>
                 <p><strong>Active:</strong> <?php echo count($active); ?></p>
-                <p><strong>Awaiting confirmation:</strong> <?php echo count($awaitingConfirmation); ?></p>
+                <p><strong>Awaiting:</strong> <?php echo count($awaitingConfirmation); ?></p>
                 <p><strong>Completed:</strong> <?php echo count($completed); ?></p>
             </article>
         </div>
 
-        <h3 style="margin-top:10px;">Live & Recent Tasks</h3>
-        <div class="grid">
+        <h3 class="section-label">Live & Recent Tasks</h3>
+        <div class="grid grid--dashboard">
             <?php if (!$recentTasks): ?><p>No tasks yet.</p><?php endif; ?>
             <?php foreach ($recentTasks as $task): ?>
-                <article class="card">
+                <article class="card card--compact">
                     <h3><?php echo h($task['title']); ?></h3>
                     <p><strong>Status:</strong> <?php echo h($task['status']); ?></p>
-                    <p><strong>Service Area:</strong> <?php echo h($task['zone_name']); ?></p>
+                    <p><strong>Area:</strong> <?php echo h($task['zone_name']); ?></p>
                     <p><strong>Runner:</strong> <?php echo h($task['runner_name'] ?? 'Unassigned'); ?></p>
                     <?php if ($task['runner_id'] !== null && in_array($task['status'], ['accepted', 'in_progress', 'awaiting_confirmation'], true)): ?>
-                        <button class="cta-button check-runner-location" type="button" data-task-id="<?php echo (int) $task['id']; ?>" style="margin-top:8px;">Check Runner Location</button>
+                        <button class="cta-button cta-button--block check-runner-location" type="button" data-task-id="<?php echo (int) $task['id']; ?>">Check Runner Location</button>
                     <?php endif; ?>
                     <?php if ($task['status'] === 'awaiting_confirmation'): ?>
-                        <form method="post" action="task_status.php" style="margin-top:8px;">
+                        <form method="post" action="task_status.php" class="compact-form-gap">
                             <?php echo csrf_field(); ?>
                             <input type="hidden" name="task_id" value="<?php echo (int) $task['id']; ?>">
                             <input type="hidden" name="status" value="completed">
-                            <button class="cta-button" type="submit">Approve Completion</button>
+                            <button class="cta-button cta-button--block" type="submit">Approve Completion</button>
                         </form>
                     <?php endif; ?>
                 </article>
@@ -124,14 +125,14 @@ $mapboxToken = trim((string) (getenv('MAPBOX_PUBLIC_TOKEN') ?: ''));
     modal.style.zIndex = '1000';
 
     modal.innerHTML = `
-        <div style="background:var(--surface); width:min(95vw, 900px); border-radius:12px; overflow:hidden;">
-            <div style="padding:12px 16px; border-bottom:1px solid #ececec; display:flex; justify-content:space-between; align-items:center;">
+        <div style="background:var(--surface); width:min(96vw, 900px); border-radius:12px; overflow:hidden;">
+            <div style="padding:10px 12px; border-bottom:1px solid #ececec; display:flex; justify-content:space-between; align-items:center;">
                 <h3 style="margin:0;">Runner Location</h3>
                 <button id="close-tracker" class="cta-button" type="button">Close</button>
             </div>
-            <div id="tracker-loading" style="padding:10px 16px;">Loading runner location…</div>
-            <div id="tracker-status" style="padding:0 16px 10px; color:var(--muted-text);"></div>
-            <div id="task-runner-map" style="width:100%; height:460px;"></div>
+            <div id="tracker-loading" style="padding:8px 12px;">Loading runner location…</div>
+            <div id="tracker-status" style="padding:0 12px 8px; color:var(--muted-text);"></div>
+            <div id="task-runner-map" style="width:100%; height:min(70vh, 460px);"></div>
         </div>
     `;
 
@@ -190,17 +191,15 @@ $mapboxToken = trim((string) (getenv('MAPBOX_PUBLIC_TOKEN') ?: ''));
 
         const iconElement = document.createElement('div');
         iconElement.textContent = '🏃';
-        iconElement.style.fontSize = '30px';
-        iconElement.style.lineHeight = '30px';
+        iconElement.style.fontSize = '28px';
+        iconElement.style.lineHeight = '28px';
         runnerMarker = new mapboxgl.Marker(iconElement)
             .setLngLat([36.8219, -1.2921])
             .addTo(map);
     }
 
     async function loadRunnerLocation() {
-        if (!activeTaskId) {
-            return;
-        }
+        if (!activeTaskId) return;
 
         if (!navigator.onLine) {
             loadingEl.style.display = 'block';
@@ -210,13 +209,8 @@ $mapboxToken = trim((string) (getenv('MAPBOX_PUBLIC_TOKEN') ?: ''));
         }
 
         try {
-            const response = await fetch(`runner_location.php?task_id=${encodeURIComponent(activeTaskId)}`, {
-                credentials: 'same-origin'
-            });
-
-            if (!response.ok) {
-                throw new Error('Unable to fetch location');
-            }
+            const response = await fetch(`runner_location.php?task_id=${encodeURIComponent(activeTaskId)}`, { credentials: 'same-origin' });
+            if (!response.ok) throw new Error('Unable to fetch location');
 
             const payload = await response.json();
 
@@ -231,9 +225,7 @@ $mapboxToken = trim((string) (getenv('MAPBOX_PUBLIC_TOKEN') ?: ''));
             runnerMarker.setLngLat([payload.longitude, payload.latitude]);
             map.setCenter([payload.longitude, payload.latitude]);
 
-            const freshness = payload.within_grace_period
-                ? 'Live (updated within 1 minute)'
-                : 'Location may be stale (older than 1 minute).';
+            const freshness = payload.within_grace_period ? 'Live (updated within 1 minute)' : 'Location may be stale (older than 1 minute).';
             statusEl.textContent = `${freshness} Last update: ${payload.location_updated_at ?? 'unknown'}`;
         } catch (_error) {
             loadingEl.style.display = 'block';
@@ -247,10 +239,7 @@ $mapboxToken = trim((string) (getenv('MAPBOX_PUBLIC_TOKEN') ?: ''));
             activeTaskId = button.getAttribute('data-task-id');
             modal.style.display = 'flex';
             ensureMap();
-            if (!map) {
-                return;
-            }
-
+            if (!map) return;
             clearPolling();
             loadRunnerLocation();
             pollingTimer = setInterval(loadRunnerLocation, 5000);

@@ -259,3 +259,139 @@ html[data-theme='dark'] .dashboard-hero {
     border-color: rgba(110, 168, 254, 0.25);
     background: linear-gradient(135deg, rgba(110, 168, 254, 0.15), rgba(17, 24, 38, 0.6));
 }
+
+/* Mobile-first compact dashboard tuning */
+.section--compact {
+    padding: 24px 0;
+}
+
+.container--mobile-dense {
+    width: min(1160px, 94vw);
+}
+
+.grid--dashboard {
+    grid-template-columns: 1fr;
+    gap: 12px;
+}
+
+.card--compact {
+    padding: 14px;
+    border-radius: 10px;
+}
+
+.dashboard-title {
+    margin: 0;
+    font-size: 1.15rem;
+    line-height: 1.2;
+    text-align: left;
+}
+
+.dashboard-subtitle {
+    margin: 6px 0 0;
+    font-size: 0.9rem;
+    color: var(--muted-text);
+}
+
+.section-label {
+    margin: 14px 0 10px;
+    font-size: 1rem;
+}
+
+.stat-value {
+    margin: 4px 0 10px;
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--text-color);
+}
+
+.button-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.cta-button--block {
+    display: block;
+    width: 100%;
+    text-align: center;
+}
+
+.cta-button--muted {
+    background: #5f6b7a;
+}
+
+.compact-form-gap {
+    margin-top: 8px;
+}
+
+@media (max-width: 768px) {
+    .header__inner {
+        padding: 10px 0;
+    }
+
+    .logo {
+        font-size: 18px;
+    }
+
+    .nav-toggle {
+        padding: 4px 8px;
+        font-size: 18px;
+    }
+
+    .section {
+        padding: 24px 0;
+    }
+
+    .section h2 {
+        margin: 0 0 14px;
+        font-size: 1.2rem;
+        text-align: left;
+    }
+
+    .grid {
+        gap: 12px;
+    }
+
+    .card {
+        padding: 14px;
+        border-radius: 10px;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+    }
+
+    .card h3 {
+        margin: 0 0 6px;
+        font-size: 0.98rem;
+    }
+
+    .card p {
+        margin: 4px 0;
+        font-size: 0.88rem;
+        line-height: 1.35;
+    }
+
+    .cta-button {
+        width: 100%;
+        padding: 9px 12px;
+        font-size: 0.92rem;
+    }
+
+    .footer {
+        padding: 22px 0;
+    }
+}
+
+@media (min-width: 769px) {
+    .grid--dashboard {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 16px;
+    }
+
+    .button-stack {
+        flex-direction: row;
+    }
+
+    .cta-button--block {
+        width: auto;
+        display: inline-block;
+    }
+}

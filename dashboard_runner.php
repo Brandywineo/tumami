@@ -37,62 +37,62 @@ $trackableTaskIds = array_values(array_map(
 </head>
 <body>
 <?php require __DIR__ . '/includes/header.php'; ?>
-<section class="section">
-    <div class="container">
-        <article class="card" style="margin-bottom:18px;">
-            <h2 style="text-align:left; margin:0;">Welcome, <?php echo h($user['full_name'] ?? 'Runner'); ?> 🛵</h2>
-            <p style="margin:8px 0 0;">Track jobs, share your live location, and manage your earnings.</p>
+<section class="section section--compact">
+    <div class="container container--mobile-dense">
+        <article class="dashboard-hero card card--compact">
+            <h2 class="dashboard-title">Welcome, <?php echo h($user['full_name'] ?? 'Runner'); ?> 🛵</h2>
+            <p class="dashboard-subtitle">Run errands, share live location, and track earnings quickly.</p>
         </article>
 
-        <div class="grid" style="margin-bottom:18px;">
-            <article class="card">
-                <h3>Available Balance</h3>
-                <p style="font-size:28px; margin:8px 0 14px;"><strong>KES <?php echo number_format($balances['available'], 2); ?></strong></p>
-                <a href="settings.php" class="cta-button">Payout Settings</a>
+        <div class="grid grid--dashboard">
+            <article class="card card--compact">
+                <h3>Earnings</h3>
+                <p class="stat-value">KES <?php echo number_format($balances['available'], 2); ?></p>
+                <a href="settings.php" class="cta-button cta-button--block">Payout Settings</a>
             </article>
-            <article class="card">
-                <h3>Performance</h3>
+            <article class="card card--compact">
+                <h3>Today</h3>
                 <p><strong>Active Jobs:</strong> <?php echo count($active); ?></p>
                 <p><strong>In Progress:</strong> <?php echo count($inProgress); ?></p>
-                <p><strong>Open Tasks Nearby:</strong> <?php echo count($availableTasks); ?></p>
+                <p><strong>Open Nearby:</strong> <?php echo count($availableTasks); ?></p>
             </article>
-            <article class="card">
+            <article class="card card--compact">
                 <h3>Location Sharing</h3>
-                <p>Tracking starts at <strong>accepted</strong>. Keep this page open while actively running tasks.</p>
-                <button class="cta-button" id="start-location-sharing" type="button">Enable Location Sharing</button>
-                <p id="location-sharing-status" style="margin-top:10px;"><?php echo $trackableTaskIds ? 'Ready to share for active tasks.' : 'No accepted/in-progress tasks to share right now.'; ?></p>
+                <p>Tracking starts at <strong>accepted</strong>.</p>
+                <button class="cta-button cta-button--block" id="start-location-sharing" type="button">Enable Location Sharing</button>
+                <p id="location-sharing-status" class="compact-form-gap"><?php echo $trackableTaskIds ? 'Ready to share for active tasks.' : 'No accepted/in-progress tasks right now.'; ?></p>
             </article>
         </div>
 
-        <h3 style="margin-top:0;">My Assigned Tasks</h3>
-        <div class="grid">
+        <h3 class="section-label">My Assigned Tasks</h3>
+        <div class="grid grid--dashboard">
             <?php if (!$tasks): ?><p>You have no assigned tasks.</p><?php endif; ?>
             <?php foreach ($tasks as $task): ?>
-                <article class="card">
+                <article class="card card--compact">
                     <h3><?php echo h($task['title']); ?></h3>
                     <p><strong>Status:</strong> <?php echo h($task['status']); ?></p>
                     <p><strong>Client:</strong> <?php echo h($task['client_name']); ?></p>
-                    <p><strong>Service Area:</strong> <?php echo h($task['zone_name']); ?></p>
+                    <p><strong>Area:</strong> <?php echo h($task['zone_name']); ?></p>
                     <?php if ($task['status'] === 'accepted'): ?>
-                        <form method="post" action="task_status.php">
+                        <form method="post" action="task_status.php" class="compact-form-gap">
                             <?php echo csrf_field(); ?>
                             <input type="hidden" name="task_id" value="<?php echo (int) $task['id']; ?>">
                             <input type="hidden" name="status" value="in_progress">
-                            <button class="cta-button" type="submit">Start Task</button>
+                            <button class="cta-button cta-button--block" type="submit">Start Task</button>
                         </form>
                     <?php elseif ($task['status'] === 'in_progress'): ?>
-                        <form method="post" action="task_status.php">
+                        <form method="post" action="task_status.php" class="compact-form-gap">
                             <?php echo csrf_field(); ?>
                             <input type="hidden" name="task_id" value="<?php echo (int) $task['id']; ?>">
                             <input type="hidden" name="status" value="awaiting_confirmation">
-                            <button class="cta-button" type="submit">Mark Done</button>
+                            <button class="cta-button cta-button--block" type="submit">Mark Done</button>
                         </form>
                     <?php endif; ?>
                 </article>
             <?php endforeach; ?>
         </div>
 
-        <p style="margin-top:20px;"><a href="browse_tasks.php" class="cta-button">Browse & Accept Tasks</a></p>
+        <p class="compact-form-gap"><a href="browse_tasks.php" class="cta-button cta-button--block">Browse & Accept Tasks</a></p>
     </div>
 </section>
 <?php require __DIR__ . '/includes/footer.php'; ?>
@@ -116,9 +116,7 @@ $trackableTaskIds = array_values(array_map(
 
     async function sendLocation(lat, lng, accuracy) {
         const now = Date.now();
-        if (now - lastSentAt < sendIntervalMs) {
-            return;
-        }
+        if (now - lastSentAt < sendIntervalMs) return;
 
         lastSentAt = now;
         statusEl.textContent = 'Sharing live location…';
@@ -128,18 +126,10 @@ $trackableTaskIds = array_values(array_map(
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'same-origin',
-                body: JSON.stringify({
-                    task_ids: taskIds,
-                    latitude: lat,
-                    longitude: lng,
-                    accuracy: accuracy
-                })
+                body: JSON.stringify({ task_ids: taskIds, latitude: lat, longitude: lng, accuracy: accuracy })
             });
 
-            if (!response.ok) {
-                throw new Error('Location update failed');
-            }
-
+            if (!response.ok) throw new Error('Location update failed');
             statusEl.textContent = 'Location shared successfully.';
         } catch (_error) {
             statusEl.textContent = 'Unable to send location. Check your network and keep this page open.';
@@ -157,13 +147,7 @@ $trackableTaskIds = array_values(array_map(
         statusEl.textContent = 'Requesting location permission…';
 
         navigator.geolocation.watchPosition(
-            (position) => {
-                sendLocation(
-                    position.coords.latitude,
-                    position.coords.longitude,
-                    position.coords.accuracy ?? null
-                );
-            },
+            (position) => sendLocation(position.coords.latitude, position.coords.longitude, position.coords.accuracy ?? null),
             () => {
                 statusEl.textContent = 'Location permission denied or unavailable. Please allow location to enable tracking.';
                 startButton.disabled = false;
