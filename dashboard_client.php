@@ -24,7 +24,7 @@ $active = array_filter($tasks, static fn (array $t): bool => in_array($t['status
 $completed = array_filter($tasks, static fn (array $t): bool => $t['status'] === 'completed');
 $awaitingConfirmation = array_filter($tasks, static fn (array $t): bool => $t['status'] === 'awaiting_confirmation');
 $recentTasks = array_slice($tasks, 0, 8);
-$mapboxToken = trim((string) (getenv('MAPBOX_PUBLIC_TOKEN') ?: ''));
+$mapboxToken = trim((string) (getenv('MAPBOX_PUBLIC_TOKEN') ?: 'sk.eyJ1Ijoia2VseWFuZzI1NCIsImEiOiJjbW1qaGF1ZTcxamNuMm9zNnRidXRuMXNuIn0.GlfkqzBXDj6ysfWwq2WBkA'));
 ?>
 <!DOCTYPE html>
 <html lang="en">
