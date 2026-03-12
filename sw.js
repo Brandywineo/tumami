@@ -32,7 +32,7 @@ self.addEventListener('fetch', (event) => {
   }
 
   const url = new URL(event.request.url);
-  const isLocationApi = url.pathname.endsWith('/runner_location.php') || url.pathname.endsWith('/runner_location_update.php');
+  const isLocationApi = url.pathname.endsWith('/runner_location.php') || url.pathname.endsWith('/runner_location_update.php') || url.pathname.endsWith('/client_location_update.php') || url.pathname.endsWith('/stream_client_map.php') || url.pathname.endsWith('/stream_runner_map.php');
   if (isLocationApi) {
     event.respondWith(fetch(event.request));
     return;
