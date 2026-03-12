@@ -39,10 +39,18 @@ $mapboxToken = trim((string) (getenv('MAPBOX_PUBLIC_TOKEN') ?: 'sk.eyJ1Ijoia2Vse
     <div class="container container--mobile-dense">
         <div class="dashboard-hero card card--compact">
             <h2 class="dashboard-title">Welcome, <?php echo h($user['full_name'] ?? 'Client'); ?> 👋</h2>
-            <p class="dashboard-subtitle">Manage errands, pick runners, and track jobs live.</p>
+            <p class="dashboard-subtitle">Live map shows your location (blue dot) and nearby runners in real time.</p>
         </div>
 
-        <div class="grid grid--dashboard">
+        <article class="card live-map-card">
+            <div class="live-map-card__header">
+                <h3 style="margin:0;">Live Runner Map</h3>
+                <p class="live-map-card__status" id="client-map-status">Connecting live feed…</p>
+            </div>
+            <div id="client-live-map" class="live-map"></div>
+        </article>
+
+        <div class="grid grid--dashboard compact-form-gap">
             <article class="card card--compact">
                 <h3>Wallet</h3>
                 <p class="stat-value">KES <?php echo number_format($balances['available'], 2); ?></p>
@@ -72,9 +80,6 @@ $mapboxToken = trim((string) (getenv('MAPBOX_PUBLIC_TOKEN') ?: 'sk.eyJ1Ijoia2Vse
                     <p><strong>Status:</strong> <?php echo h($task['status']); ?></p>
                     <p><strong>Area:</strong> <?php echo h($task['zone_name']); ?></p>
                     <p><strong>Runner:</strong> <?php echo h($task['runner_name'] ?? 'Unassigned'); ?></p>
-                    <?php if ($task['runner_id'] !== null && in_array($task['status'], ['accepted', 'in_progress', 'awaiting_confirmation'], true)): ?>
-                        <button class="cta-button cta-button--block check-runner-location" type="button" data-task-id="<?php echo (int) $task['id']; ?>">Check Runner Location</button>
-                    <?php endif; ?>
                     <?php if ($task['status'] === 'awaiting_confirmation'): ?>
                         <form method="post" action="task_status.php" class="compact-form-gap">
                             <?php echo csrf_field(); ?>
@@ -88,6 +93,11 @@ $mapboxToken = trim((string) (getenv('MAPBOX_PUBLIC_TOKEN') ?: 'sk.eyJ1Ijoia2Vse
         </div>
     </div>
 </section>
+<?php
+$bottomNavRole = 'client';
+$bottomNavActive = 'my_errands';
+require __DIR__ . '/includes/bottom_nav.php';
+?>
 <?php require __DIR__ . '/includes/footer.php'; ?>
 
 <link href="https://api.mapbox.com/mapbox-gl-js/v3.5.1/mapbox-gl.css" rel="stylesheet">
@@ -95,9 +105,11 @@ $mapboxToken = trim((string) (getenv('MAPBOX_PUBLIC_TOKEN') ?: 'sk.eyJ1Ijoia2Vse
 <script>
 (() => {
     const mapboxToken = <?php echo json_encode($mapboxToken, JSON_THROW_ON_ERROR); ?>;
-    const buttons = document.querySelectorAll('.check-runner-location');
+    const statusEl = document.getElementById('client-map-status');
+    const containerId = 'client-live-map';
 
-    if (!buttons.length) {
+    if (!mapboxToken) {
+        statusEl.textContent = 'Map unavailable: MAPBOX_PUBLIC_TOKEN missing.';
         return;
     }
 
@@ -111,141 +123,142 @@ $mapboxToken = trim((string) (getenv('MAPBOX_PUBLIC_TOKEN') ?: 'sk.eyJ1Ijoia2Vse
         return (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
     };
 
-    const styleByTheme = () => getTheme() === 'dark'
-        ? 'mapbox://styles/mapbox/dark-v11'
-        : 'mapbox://styles/mapbox/streets-v12';
-
-    const modal = document.createElement('div');
-    modal.style.position = 'fixed';
-    modal.style.inset = '0';
-    modal.style.background = 'rgba(0, 0, 0, 0.6)';
-    modal.style.display = 'none';
-    modal.style.alignItems = 'center';
-    modal.style.justifyContent = 'center';
-    modal.style.zIndex = '1000';
-
-    modal.innerHTML = `
-        <div style="background:var(--surface); width:min(96vw, 900px); border-radius:12px; overflow:hidden;">
-            <div style="padding:10px 12px; border-bottom:1px solid #ececec; display:flex; justify-content:space-between; align-items:center;">
-                <h3 style="margin:0;">Runner Location</h3>
-                <button id="close-tracker" class="cta-button" type="button">Close</button>
-            </div>
-            <div id="tracker-loading" style="padding:8px 12px;">Loading runner location…</div>
-            <div id="tracker-status" style="padding:0 12px 8px; color:var(--muted-text);"></div>
-            <div id="task-runner-map" style="width:100%; height:min(70vh, 460px);"></div>
-        </div>
-    `;
-
-    document.body.appendChild(modal);
-
-    const closeButton = modal.querySelector('#close-tracker');
-    const loadingEl = modal.querySelector('#tracker-loading');
-    const statusEl = modal.querySelector('#tracker-status');
-
-    let map = null;
-    let runnerMarker = null;
-    let activeTaskId = null;
-    let pollingTimer = null;
-
-    function clearPolling() {
-        if (pollingTimer !== null) {
-            clearInterval(pollingTimer);
-            pollingTimer = null;
-        }
-    }
-
-    function closeModal() {
-        clearPolling();
-        modal.style.display = 'none';
-        activeTaskId = null;
-        statusEl.textContent = '';
-        loadingEl.textContent = 'Loading runner location…';
-        loadingEl.style.display = 'block';
-    }
-
-    closeButton.addEventListener('click', closeModal);
-    modal.addEventListener('click', (event) => {
-        if (event.target === modal) {
-            closeModal();
-        }
+    mapboxgl.accessToken = mapboxToken;
+    const map = new mapboxgl.Map({
+        container: containerId,
+        style: getTheme() === 'dark' ? 'mapbox://styles/mapbox/dark-v11' : 'mapbox://styles/mapbox/streets-v12',
+        center: [36.8219, -1.2921],
+        zoom: 12
     });
 
-    function ensureMap() {
-        if (map !== null) {
-            map.setStyle(styleByTheme());
-            return;
-        }
+    const runnerMarkers = new Map();
+    const clientSourceId = 'client-location';
+    let sourceReady = false;
+    let stream = null;
+    let lastSentAt = 0;
 
-        if (!mapboxToken) {
-            loadingEl.textContent = 'Map is unavailable: missing MAPBOX_PUBLIC_TOKEN.';
-            return;
-        }
-
-        mapboxgl.accessToken = mapboxToken;
-        map = new mapboxgl.Map({
-            container: 'task-runner-map',
-            style: styleByTheme(),
-            center: [36.8219, -1.2921],
-            zoom: 13
-        });
-
-        const iconElement = document.createElement('div');
-        iconElement.textContent = '🏃';
-        iconElement.style.fontSize = '28px';
-        iconElement.style.lineHeight = '28px';
-        runnerMarker = new mapboxgl.Marker(iconElement)
-            .setLngLat([36.8219, -1.2921])
-            .addTo(map);
-    }
-
-    async function loadRunnerLocation() {
-        if (!activeTaskId) return;
-
-        if (!navigator.onLine) {
-            loadingEl.style.display = 'block';
-            loadingEl.textContent = 'Loading runner location… network disconnected.';
-            statusEl.textContent = 'Waiting for internet connection.';
-            return;
-        }
-
-        try {
-            const response = await fetch(`runner_location.php?task_id=${encodeURIComponent(activeTaskId)}`, { credentials: 'same-origin' });
-            if (!response.ok) throw new Error('Unable to fetch location');
-
-            const payload = await response.json();
-
-            if (payload.latitude === null || payload.longitude === null) {
-                loadingEl.style.display = 'block';
-                loadingEl.textContent = 'Loading runner location…';
-                statusEl.textContent = 'Runner has not shared a GPS fix yet.';
-                return;
+    map.on('load', () => {
+        map.addSource(clientSourceId, {
+            type: 'geojson',
+            data: {
+                type: 'FeatureCollection',
+                features: []
             }
+        });
 
-            loadingEl.style.display = 'none';
-            runnerMarker.setLngLat([payload.longitude, payload.latitude]);
-            map.setCenter([payload.longitude, payload.latitude]);
+        map.addLayer({
+            id: 'client-dot',
+            type: 'circle',
+            source: clientSourceId,
+            paint: {
+                'circle-radius': 6,
+                'circle-color': '#3b82f6',
+                'circle-stroke-color': '#ffffff',
+                'circle-stroke-width': 2
+            }
+        });
 
-            const freshness = payload.within_grace_period ? 'Live (updated within 1 minute)' : 'Location may be stale (older than 1 minute).';
-            statusEl.textContent = `${freshness} Last update: ${payload.location_updated_at ?? 'unknown'}`;
-        } catch (_error) {
-            loadingEl.style.display = 'block';
-            loadingEl.textContent = 'Loading runner location…';
-            statusEl.textContent = 'Network issue while fetching location. Retrying automatically.';
-        }
+        sourceReady = true;
+    });
+
+    function upsertClientDot(latitude, longitude) {
+        if (!sourceReady || latitude === null || longitude === null) return;
+
+        const src = map.getSource(clientSourceId);
+        if (!src) return;
+
+        src.setData({
+            type: 'FeatureCollection',
+            features: [{
+                type: 'Feature',
+                geometry: { type: 'Point', coordinates: [longitude, latitude] },
+                properties: {}
+            }]
+        });
     }
 
-    buttons.forEach((button) => {
-        button.addEventListener('click', () => {
-            activeTaskId = button.getAttribute('data-task-id');
-            modal.style.display = 'flex';
-            ensureMap();
-            if (!map) return;
-            clearPolling();
-            loadRunnerLocation();
-            pollingTimer = setInterval(loadRunnerLocation, 5000);
-            setTimeout(() => map.resize(), 100);
+    function upsertRunnerMarkers(runners) {
+        const seen = new Set();
+
+        runners.forEach((runner) => {
+            if (runner.latitude === null || runner.longitude === null) return;
+            const id = Number(runner.id);
+            seen.add(id);
+
+            let marker = runnerMarkers.get(id);
+            if (!marker) {
+                const icon = document.createElement('div');
+                icon.textContent = '🏃';
+                icon.style.fontSize = '20px';
+                icon.style.lineHeight = '20px';
+
+                marker = new mapboxgl.Marker(icon)
+                    .setLngLat([runner.longitude, runner.latitude])
+                    .setPopup(new mapboxgl.Popup({ offset: 16 }).setHTML(`<strong>${runner.name}</strong><br>${runner.distance_km ?? '-'} km away`))
+                    .addTo(map);
+                runnerMarkers.set(id, marker);
+            } else {
+                marker.setLngLat([runner.longitude, runner.latitude]);
+            }
         });
-    });
+
+        runnerMarkers.forEach((marker, id) => {
+            if (!seen.has(id)) {
+                marker.remove();
+                runnerMarkers.delete(id);
+            }
+        });
+    }
+
+    function connectStream() {
+        if (stream) {
+            stream.close();
+        }
+
+        stream = new EventSource('stream_client_map.php');
+
+        stream.addEventListener('map', (event) => {
+            const payload = JSON.parse(event.data);
+            upsertClientDot(payload.client.latitude, payload.client.longitude);
+            upsertRunnerMarkers(payload.runners || []);
+            statusEl.textContent = `Live: ${payload.runners?.length ?? 0} runners nearby · ${new Date().toLocaleTimeString()}`;
+        });
+
+        stream.addEventListener('end', () => {
+            statusEl.textContent = 'Refreshing live feed…';
+            connectStream();
+        });
+
+        stream.onerror = () => {
+            statusEl.textContent = 'Connection issue, reconnecting…';
+            setTimeout(connectStream, 2000);
+        };
+    }
+
+    connectStream();
+
+    if (navigator.geolocation) {
+        navigator.geolocation.watchPosition((position) => {
+            const lat = Number(position.coords.latitude);
+            const lng = Number(position.coords.longitude);
+
+            upsertClientDot(lat, lng);
+            const now = Date.now();
+            if (now - lastSentAt < 5000) return;
+            lastSentAt = now;
+
+            fetch('client_location_update.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
+                body: JSON.stringify({ latitude: lat, longitude: lng })
+            }).catch(() => {
+                // Keep map running even if temporary network issue.
+            });
+        }, () => {
+            statusEl.textContent = 'Location denied. Showing map without your live blue dot.';
+        }, { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 });
+    }
 })();
 </script>
 </body>

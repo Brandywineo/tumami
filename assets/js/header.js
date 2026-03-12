@@ -227,3 +227,26 @@
     setupInstallPrompt();
     setupInstalledGpsNudge();
 })();
+
+(function () {
+    const drawer = document.querySelector('[data-settings-drawer]');
+    const openButtons = document.querySelectorAll('[data-settings-drawer-open]');
+    const closeButtons = document.querySelectorAll('[data-settings-drawer-close]');
+
+    if (!drawer || openButtons.length === 0) {
+        return;
+    }
+
+    const openDrawer = function () {
+        drawer.hidden = false;
+        document.body.style.overflow = 'hidden';
+    };
+
+    const closeDrawer = function () {
+        drawer.hidden = true;
+        document.body.style.overflow = '';
+    };
+
+    openButtons.forEach((btn) => btn.addEventListener('click', openDrawer));
+    closeButtons.forEach((btn) => btn.addEventListener('click', closeDrawer));
+})();

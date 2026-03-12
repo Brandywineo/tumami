@@ -99,6 +99,8 @@ class UserRepository
             u.rating,
             u.rating_count,
             u.current_zone_id,
+            COALESCE(rp.latitude, u.latitude) AS latitude,
+            COALESCE(rp.longitude, u.longitude) AS longitude,
             z.name AS active_zone_name,
             rp.vehicle_type,
             rp.radius_km,
