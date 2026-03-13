@@ -21,6 +21,11 @@ if ($role === 'client') {
     ];
 
     $settingsDrawerItems = [
+        ['label' => 'Client Dashboard', 'href' => 'dashboard_client.php'],
+        ['label' => 'Runner Dashboard', 'href' => 'dashboard_runner.php'],
+        ['label' => 'Browse Tasks', 'href' => 'browse_tasks.php'],
+        ['label' => 'Active Runners', 'href' => 'active_runners.php'],
+        ['label' => 'Top Up Wallet', 'href' => 'topup.php'],
         ['label' => 'Profile Settings', 'href' => 'settings.php'],
         ['label' => 'Runner Filters', 'href' => 'active_runners.php'],
         ['label' => 'Map Settings', 'href' => 'settings.php#map-settings'],
@@ -34,6 +39,11 @@ if ($role === 'client') {
     ];
 
     $settingsDrawerItems = [
+        ['label' => 'Client Dashboard', 'href' => 'dashboard_client.php'],
+        ['label' => 'Runner Dashboard', 'href' => 'dashboard_runner.php'],
+        ['label' => 'Browse Tasks', 'href' => 'browse_tasks.php'],
+        ['label' => 'Active Runners', 'href' => 'active_runners.php'],
+        ['label' => 'Top Up Wallet', 'href' => 'topup.php'],
         ['label' => 'Profile Settings', 'href' => 'settings.php'],
         ['label' => 'Runner Filters', 'href' => 'settings.php#runner-filters'],
         ['label' => 'Map Settings', 'href' => 'settings.php#map-settings'],
@@ -69,6 +79,10 @@ if ($role === 'client') {
             <?php foreach ($settingsDrawerItems as $drawerItem): ?>
                 <a class="settings-drawer__link" href="<?php echo h($drawerItem['href']); ?>"><?php echo h($drawerItem['label']); ?></a>
             <?php endforeach; ?>
+            <form method="post" action="logout.php" class="settings-drawer__logout-form">
+                <?php echo csrf_field(); ?>
+                <button type="submit" class="settings-drawer__logout-button">Logout</button>
+            </form>
         </div>
     </aside>
 </div>

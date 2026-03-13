@@ -420,6 +420,48 @@ html[data-theme='dark'] .dashboard-hero {
     height: min(52vh, 420px);
 }
 
+
+.dashboard-app {
+    height: 100dvh;
+    overflow: hidden;
+}
+
+.dashboard-app__shell {
+    height: calc(100dvh - 74px);
+    padding: 12px 0 0;
+}
+
+.dashboard-app__content {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.dashboard-app__hero {
+    flex: 0 0 auto;
+}
+
+.dashboard-app__map-card {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.live-map--app {
+    flex: 1 1 auto;
+    min-height: 0;
+    height: auto;
+}
+
+.dashboard-app__status-chip {
+    margin: 0;
+    font-size: 12px;
+    color: var(--muted-text);
+    text-align: center;
+}
+
 .bottom-nav {
     position: fixed;
     left: 0;
@@ -506,6 +548,22 @@ html[data-theme='dark'] .dashboard-hero {
     padding: 10px 12px;
 }
 
+
+.settings-drawer__logout-form {
+    margin: 0;
+}
+
+.settings-drawer__logout-button {
+    width: 100%;
+    border: 0;
+    border-radius: 8px;
+    padding: 10px 12px;
+    background: #b42318;
+    color: #fff;
+    cursor: pointer;
+    text-align: left;
+}
+
 @media (min-width: 992px) {
     .bottom-nav {
         display: none;
@@ -514,6 +572,20 @@ html[data-theme='dark'] .dashboard-hero {
     .settings-drawer {
         display: none;
     }
+}
+
+
+.dashboard-app .header,
+.dashboard-app .footer {
+    display: none;
+}
+
+.dashboard-app .bottom-nav {
+    display: grid;
+}
+
+.dashboard-app .settings-drawer {
+    display: block;
 }
 
 @media (max-width: 991px) {
