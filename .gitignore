@@ -2,3 +2,5 @@
 *.pnp
 *.jpg
 *.ico
+
+.env
