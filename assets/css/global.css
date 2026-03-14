@@ -622,7 +622,7 @@ html[data-theme='dark'] .dashboard-hero {
     display: grid;
 }
 
-.dashboard-app .settings-drawer {
+.dashboard-app .settings-drawer:not([hidden]) {
     display: block;
 }
 
