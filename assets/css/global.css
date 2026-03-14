@@ -507,6 +507,8 @@ html[data-theme='dark'] .dashboard-hero {
     position: absolute;
     inset: 0;
     background: rgba(0, 0, 0, 0.45);
+    opacity: 0;
+    transition: opacity 0.22s ease;
 }
 
 .settings-drawer__panel {
@@ -519,6 +521,24 @@ html[data-theme='dark'] .dashboard-hero {
     display: flex;
     flex-direction: column;
     box-shadow: -12px 0 30px rgba(0, 0, 0, 0.2);
+    transform: translateX(100%);
+    transition: transform 0.22s ease;
+}
+
+.settings-drawer.is-visible .settings-drawer__backdrop {
+    opacity: 1;
+}
+
+.settings-drawer.is-visible .settings-drawer__panel {
+    transform: translateX(0);
+}
+
+.settings-drawer.is-closing .settings-drawer__backdrop {
+    opacity: 0;
+}
+
+.settings-drawer.is-closing .settings-drawer__panel {
+    transform: translateX(100%);
 }
 
 .settings-drawer__header {
@@ -527,6 +547,24 @@ html[data-theme='dark'] .dashboard-hero {
     display: flex;
     justify-content: space-between;
     align-items: center;
+}
+
+.settings-drawer__close {
+    border: 0;
+    background: transparent;
+    color: var(--text-color);
+    font-size: 28px;
+    line-height: 1;
+    padding: 0;
+    width: 32px;
+    height: 32px;
+    cursor: pointer;
+}
+
+.settings-drawer__close:focus-visible {
+    outline: 2px solid var(--brand-primary);
+    outline-offset: 2px;
+    border-radius: 6px;
 }
 
 .settings-drawer__header h3 {
