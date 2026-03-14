@@ -230,22 +230,126 @@
 
 (function () {
     const drawer = document.querySelector('[data-settings-drawer]');
+    const panel = drawer ? drawer.querySelector('.settings-drawer__panel') : null;
     const openButtons = document.querySelectorAll('[data-settings-drawer-open]');
     const closeButtons = document.querySelectorAll('[data-settings-drawer-close]');
+    const focusableSelectors = [
+        'a[href]',
+        'button:not([disabled])',
+        'input:not([disabled]):not([type="hidden"])',
+        'select:not([disabled])',
+        'textarea:not([disabled])',
+        '[tabindex]:not([tabindex="-1"])'
+    ];
 
-    if (!drawer || openButtons.length === 0) {
+    if (!drawer || !panel || openButtons.length === 0) {
         return;
     }
 
+    let isClosing = false;
+    let lastFocusedElement = null;
+
+    const getFocusableElements = function () {
+        return Array.from(panel.querySelectorAll(focusableSelectors.join(','))).filter((el) => {
+            if (!el || typeof el.offsetParent === 'undefined') {
+                return false;
+            }
+
+            return el.offsetParent !== null || el === document.activeElement;
+        });
+    };
+
+    const handleKeydown = function (event) {
+        if (event.key === 'Escape') {
+            event.preventDefault();
+            closeDrawer();
+            return;
+        }
+
+        if (event.key !== 'Tab') {
+            return;
+        }
+
+        const focusable = getFocusableElements();
+        if (focusable.length === 0) {
+            event.preventDefault();
+            panel.focus();
+            return;
+        }
+
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+
+        if (event.shiftKey && document.activeElement === first) {
+            event.preventDefault();
+            last.focus();
+            return;
+        }
+
+        if (!event.shiftKey && document.activeElement === last) {
+            event.preventDefault();
+            first.focus();
+        }
+    };
+
+    const finishClose = function () {
+        drawer.hidden = true;
+        drawer.classList.remove('is-visible', 'is-closing');
+        document.body.style.overflow = '';
+        document.removeEventListener('keydown', handleKeydown);
+
+        if (lastFocusedElement && typeof lastFocusedElement.focus === 'function') {
+            lastFocusedElement.focus();
+        }
+
+        lastFocusedElement = null;
+        isClosing = false;
+    };
+
     const openDrawer = function () {
+        if (!drawer.hidden && !isClosing) {
+            return;
+        }
+
+        if (isClosing) {
+            drawer.classList.remove('is-closing');
+            isClosing = false;
+        }
+
+        lastFocusedElement = document.activeElement;
         drawer.hidden = false;
         document.body.style.overflow = 'hidden';
+
+        window.requestAnimationFrame(() => {
+            drawer.classList.add('is-visible');
+        });
+        document.addEventListener('keydown', handleKeydown);
+
+        window.requestAnimationFrame(() => {
+            const focusable = getFocusableElements();
+            if (focusable.length > 0) {
+                focusable[0].focus();
+                return;
+            }
+
+            panel.focus();
+        });
     };
 
     const closeDrawer = function () {
-        drawer.hidden = true;
-        document.body.style.overflow = '';
+        if (drawer.hidden || isClosing) {
+            return;
+        }
+
+        isClosing = true;
+        drawer.classList.remove('is-visible');
+        drawer.classList.add('is-closing');
+        window.setTimeout(finishClose, 220);
     };
+
+    drawer.querySelectorAll('.settings-drawer__link').forEach((link) => {
+        link.addEventListener('click', closeDrawer);
+    });
 
     openButtons.forEach((btn) => btn.addEventListener('click', openDrawer));
     closeButtons.forEach((btn) => btn.addEventListener('click', closeDrawer));

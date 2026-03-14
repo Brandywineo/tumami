@@ -70,10 +70,10 @@ if ($role === 'client') {
 
 <div class="settings-drawer" data-settings-drawer hidden>
     <div class="settings-drawer__backdrop" data-settings-drawer-close></div>
-    <aside class="settings-drawer__panel" role="dialog" aria-modal="true" aria-label="Settings menu">
+    <aside class="settings-drawer__panel" role="dialog" aria-modal="true" aria-label="Settings menu" tabindex="-1">
         <div class="settings-drawer__header">
             <h3>Settings</h3>
-            <button type="button" class="cta-button" data-settings-drawer-close>Close</button>
+            <button type="button" class="settings-drawer__close" data-settings-drawer-close aria-label="Close settings drawer">&times;</button>
         </div>
         <div class="settings-drawer__body">
             <?php foreach ($settingsDrawerItems as $drawerItem): ?>
