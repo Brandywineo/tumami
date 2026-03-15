@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 require __DIR__ . '/includes/bootstrap.php';
-require __DIR__ . '/db/database.php';
 
 use App\Repositories\TaskRepository;
 use App\Repositories\UserRepository;
@@ -12,15 +11,24 @@ use App\Services\RunnerAvailabilityService;
 requireRole(['runner', 'both']);
 
 $userId = (int) currentUserId();
-$taskRepo = new TaskRepository($pdo);
-$userRepo = new UserRepository($pdo);
-$user = $userRepo->findById($userId);
-$availability = $availabilityService->status($userId);
-$tasks = $taskRepo->byRunner($userId);
-$trackableTaskIds = array_values(array_map(
-    static fn (array $task): int => (int) $task['id'],
-    array_filter($tasks, static fn (array $t): bool => in_array($t['status'], ['accepted', 'in_progress', 'awaiting_confirmation'], true))
-));
+$user = ['full_name' => 'Runner'];
+$trackableTaskIds = [];
+
+try {
+    require __DIR__ . '/db/database.php';
+    if (isset($pdo)) {
+        $taskRepo = new TaskRepository($pdo);
+        $userRepo = new UserRepository($pdo);
+        $user = $userRepo->findById($userId) ?? $user;
+        $tasks = $taskRepo->byRunner($userId);
+        $trackableTaskIds = array_values(array_map(
+            static fn (array $task): int => (int) $task['id'],
+            array_filter($tasks, static fn (array $t): bool => in_array($t['status'], ['accepted', 'in_progress', 'awaiting_confirmation'], true))
+        ));
+    }
+} catch (Throwable $_e) {
+    // Degraded mode: keep dashboard shell available even if database is temporarily unreachable.
+}
 $mapboxToken = trim((string) (getenv('MAPBOX_PUBLIC_TOKEN') ?: ''));
 ?>
 <!DOCTYPE html>
