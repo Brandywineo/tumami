@@ -5,6 +5,7 @@ declare(strict_types=1);
 require __DIR__ . '/includes/bootstrap.php';
 
 use App\Repositories\UserRepository;
+use App\Repositories\TaskRepository;
 
 requireRole(['client', 'both']);
 
