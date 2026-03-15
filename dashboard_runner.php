@@ -14,6 +14,7 @@ requireRole(['runner', 'both']);
 $userId = (int) currentUserId();
 $taskRepo = new TaskRepository($pdo);
 $userRepo = new UserRepository($pdo);
+$availabilityService = new RunnerAvailabilityService($userRepo);
 $user = $userRepo->findById($userId);
 $availability = $availabilityService->status($userId);
 $tasks = $taskRepo->byRunner($userId);
