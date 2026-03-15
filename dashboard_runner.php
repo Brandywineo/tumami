@@ -13,12 +13,11 @@ requireRole(['runner', 'both']);
 $userId = (int) currentUserId();
 $taskRepo = new TaskRepository($pdo);
 $userRepo = new UserRepository($pdo);
-
 $user = $userRepo->findById($userId);
 $tasks = $taskRepo->byRunner($userId);
 $trackableTaskIds = array_values(array_map(
     static fn (array $task): int => (int) $task['id'],
-    array_filter($tasks, static fn (array $t): bool => in_array($t['status'], ['accepted', 'in_progress'], true))
+    array_filter($tasks, static fn (array $t): bool => in_array($t['status'], ['accepted', 'in_progress', 'awaiting_confirmation'], true))
 ));
 $mapboxToken = trim((string) (getenv('MAPBOX_PUBLIC_TOKEN') ?: ''));
 ?>
@@ -45,9 +44,7 @@ $mapboxToken = trim((string) (getenv('MAPBOX_PUBLIC_TOKEN') ?: ''));
             <div id="runner-live-map" class="live-map live-map--app"></div>
         </article>
 
-        <p id="location-sharing-status" class="dashboard-app__status-chip">
-            <?php echo $trackableTaskIds ? 'Live sharing enabled for active tasks.' : 'No accepted/in-progress tasks right now.'; ?>
-        </p>
+
     </div>
 </main>
 <?php
@@ -65,7 +62,6 @@ window.TUMAMI_IS_AUTHENTICATED = true;
 (() => {
     const taskIds = <?php echo json_encode($trackableTaskIds, JSON_THROW_ON_ERROR); ?>;
     const mapboxToken = <?php echo json_encode($mapboxToken, JSON_THROW_ON_ERROR); ?>;
-    const statusEl = document.getElementById('location-sharing-status');
     const mapStatusEl = document.getElementById('runner-map-status');
 
     let lastSentAt = 0;
@@ -193,12 +189,12 @@ window.TUMAMI_IS_AUTHENTICATED = true;
     connectStream();
 
     if (taskIds.length === 0) {
-        statusEl.textContent = 'No accepted/in-progress tasks right now.';
+        mapStatusEl.textContent = 'Live map ready. No accepted/in-progress/awaiting-confirmation tasks yet.';
         return;
     }
 
     if (!navigator.geolocation) {
-        statusEl.textContent = 'Geolocation is not supported on this device/browser.';
+        mapStatusEl.textContent = 'Geolocation is not supported on this device/browser.';
         return;
     }
 
@@ -216,17 +212,17 @@ window.TUMAMI_IS_AUTHENTICATED = true;
             });
 
             if (!response.ok) throw new Error('Location update failed');
-            statusEl.textContent = 'Live sharing enabled for active tasks.';
+mapStatusEl.textContent = 'Live sharing enabled for active tasks.';
             updateRunnerMarker(lat, lng);
         } catch (_error) {
-            statusEl.textContent = 'Unable to send location. Check network and keep this page open.';
+mapStatusEl.textContent = 'Unable to send location. Check network and keep this page open.';
         }
     }
 
     navigator.geolocation.watchPosition(
         (position) => sendLocation(position.coords.latitude, position.coords.longitude, position.coords.accuracy ?? null),
         () => {
-            statusEl.textContent = 'Location permission denied or unavailable. Please allow location to enable tracking.';
+mapStatusEl.textContent = 'Location permission denied or unavailable. Please allow location to enable tracking.';
         },
         { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 }
     );

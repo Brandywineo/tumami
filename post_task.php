@@ -108,7 +108,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </form>
     </div>
 </section>
-<?php require __DIR__ . '/includes/footer.php'; ?>
+<?php
+$bottomNavRole = 'client';
+$bottomNavActive = 'my_errands';
+require __DIR__ . '/includes/bottom_nav.php';
+require __DIR__ . '/includes/footer.php';
+?>
 <link href="https://api.mapbox.com/mapbox-gl-js/v3.5.1/mapbox-gl.css" rel="stylesheet">
 <script src="https://api.mapbox.com/mapbox-gl-js/v3.5.1/mapbox-gl.js"></script>
 <script>

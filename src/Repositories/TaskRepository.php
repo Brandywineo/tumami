@@ -74,9 +74,13 @@ class TaskRepository
 
     public function browsePostedForRunner(int $runnerId, ?int $zoneId = null): array
     {
-        $runnerStmt = $this->pdo->prepare('SELECT active_zone_id, accepts_adjacent_zones FROM runner_profiles WHERE user_id = :user_id LIMIT 1');
+        $runnerStmt = $this->pdo->prepare('SELECT active_zone_id, accepts_adjacent_zones, is_available FROM runner_profiles WHERE user_id = :user_id LIMIT 1');
         $runnerStmt->execute(['user_id' => $runnerId]);
-        $runner = $runnerStmt->fetch() ?: ['active_zone_id' => null, 'accepts_adjacent_zones' => 1];
+        $runner = $runnerStmt->fetch() ?: ['active_zone_id' => null, 'accepts_adjacent_zones' => 1, 'is_available' => 0];
+
+        if ((int) ($runner['is_available'] ?? 0) !== 1) {
+            return [];
+        }
 
         $params = [];
         $where = 't.status = "posted"';
