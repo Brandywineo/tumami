@@ -1,0 +1,96 @@
+<?php
+
+declare(strict_types=1);
+
+require __DIR__ . '/includes/bootstrap.php';
+require __DIR__ . '/db/database.php';
+
+use App\Repositories\UserRepository;
+
+requireRole(['client', 'both']);
+
+ignore_user_abort(true);
+set_time_limit(0);
+
+header('Content-Type: text/event-stream');
+header('Cache-Control: no-cache, no-store, must-revalidate');
+header('Connection: keep-alive');
+header('X-Accel-Buffering: no');
+
+$zoneId = isset($_GET['zone_id']) && $_GET['zone_id'] !== '' ? (int) $_GET['zone_id'] : null;
+$sort = $_GET['sort'] ?? 'rating';
+if (!in_array($sort, ['rating', 'tasks', 'fee_low'], true)) {
+    $sort = 'rating';
+}
+
+$lat = isset($_GET['lat']) && $_GET['lat'] !== '' ? (float) $_GET['lat'] : null;
+$lng = isset($_GET['lng']) && $_GET['lng'] !== '' ? (float) $_GET['lng'] : null;
+if ($lat !== null && ($lat < -90 || $lat > 90)) {
+    $lat = null;
+}
+if ($lng !== null && ($lng < -180 || $lng > 180)) {
+    $lng = null;
+}
+
+$repo = new UserRepository($pdo);
+$onlineWindowSeconds = 90;
+$startedAt = time();
+$maxRuntimeSeconds = 55;
+
+while (!connection_aborted()) {
+    $rows = $repo->activeRunners($zoneId, $sort, $lat, $lng);
+
+    $runners = array_values(array_filter(array_map(static function (array $runner) use ($onlineWindowSeconds): ?array {
+        $updatedAt = $runner['location_updated_at'] ?? null;
+        $isOnline = false;
+        if ($updatedAt) {
+            $timestamp = strtotime((string) $updatedAt);
+            if ($timestamp !== false) {
+                $isOnline = (time() - $timestamp) <= $onlineWindowSeconds;
+            }
+        }
+
+        if (!$isOnline) {
+            return null;
+        }
+
+        return [
+            'id' => (int) $runner['id'],
+            'full_name' => (string) ($runner['full_name'] ?? 'Runner'),
+            'active_zone_name' => (string) ($runner['active_zone_name'] ?? 'Unspecified'),
+            'vehicle_type' => (string) ($runner['vehicle_type'] ?? 'walking'),
+            'rating' => (float) ($runner['rating'] ?? 0),
+            'rating_count' => (int) ($runner['rating_count'] ?? 0),
+            'total_tasks_completed' => (int) ($runner['total_tasks_completed'] ?? 0),
+            'radius_km' => (int) ($runner['radius_km'] ?? 0),
+            'distance_km' => isset($runner['distance_km']) && $runner['distance_km'] !== null ? round((float) $runner['distance_km'], 2) : null,
+            'location_updated_at' => $updatedAt,
+        ];
+    }, $rows)));
+
+    $payload = [
+        'server_time' => gmdate('c'),
+        'runners' => $runners,
+        'count' => count($runners),
+    ];
+
+    echo "event: runners\n";
+    echo 'data: ' . json_encode($payload, JSON_THROW_ON_ERROR) . "\n\n";
+
+    if (function_exists('ob_get_level') && ob_get_level() > 0) {
+        @ob_flush();
+    }
+    flush();
+
+    if ((time() - $startedAt) >= $maxRuntimeSeconds) {
+        echo "event: end\n";
+        echo "data: {}\n\n";
+        if (function_exists('ob_get_level') && ob_get_level() > 0) {
+            @ob_flush();
+        }
+        flush();
+        break;
+    }
+
+    sleep(2);
+}

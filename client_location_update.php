@@ -41,5 +41,18 @@ $stmt->execute([
     'id' => $userId,
 ]);
 
+$taskStmt = $pdo->prepare(
+    'UPDATE tasks
+     SET client_latitude = :latitude,
+         client_longitude = :longitude
+     WHERE client_id = :client_id
+       AND status IN ("accepted", "in_progress", "awaiting_confirmation")'
+);
+$taskStmt->execute([
+    'latitude' => $latitude,
+    'longitude' => $longitude,
+    'client_id' => $userId,
+]);
+
 header('Content-Type: application/json');
 echo json_encode(['ok' => true]);

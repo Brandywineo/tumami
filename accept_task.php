@@ -6,6 +6,8 @@ require __DIR__ . '/includes/bootstrap.php';
 require __DIR__ . '/db/database.php';
 
 use App\Repositories\TaskRepository;
+use App\Repositories\UserRepository;
+use App\Services\RunnerAvailabilityService;
 use App\Services\TaskStateGuard;
 
 requireRole(['runner', 'both']);
@@ -31,6 +33,7 @@ if ($taskId <= 0) {
 
 $taskRepo = new TaskRepository($pdo);
 $guard = new TaskStateGuard();
+$availability = new RunnerAvailabilityService(new UserRepository($pdo));
 
 try {
     $pdo->beginTransaction();
@@ -38,6 +41,11 @@ try {
     $task = $taskRepo->findByIdForUpdate($taskId);
     if (!$task) {
         throw new RuntimeException('Task not found.');
+    }
+
+    $availabilityState = $availability->status($runnerId);
+    if (!$availabilityState['is_available']) {
+        throw new RuntimeException('Set your availability to ON before accepting tasks.');
     }
 
     $guard->assertTransitionAllowed($task, $runnerId, $actorRole, 'accepted');
