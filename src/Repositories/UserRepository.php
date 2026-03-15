@@ -61,6 +61,24 @@ class UserRepository
         return $user ?: null;
     }
 
+    public function runnerAvailability(int $userId): ?array
+    {
+        $stmt = $this->pdo->prepare('SELECT is_available, location_updated_at FROM runner_profiles WHERE user_id = :user_id LIMIT 1');
+        $stmt->execute(['user_id' => $userId]);
+        $profile = $stmt->fetch();
+
+        return $profile ?: null;
+    }
+
+    public function setRunnerAvailability(int $userId, bool $isAvailable): void
+    {
+        $stmt = $this->pdo->prepare('UPDATE runner_profiles SET is_available = :is_available, updated_at = NOW() WHERE user_id = :user_id LIMIT 1');
+        $stmt->execute([
+            'is_available' => $isAvailable ? 1 : 0,
+            'user_id' => $userId,
+        ]);
+    }
+
     public function activeRunners(?int $zoneId = null, string $sort = 'rating', ?float $latitude = null, ?float $longitude = null): array
     {
         $where = 'rp.is_available = 1';

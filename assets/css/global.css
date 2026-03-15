@@ -378,6 +378,10 @@ html[data-theme='dark'] .dashboard-hero {
     .footer {
         padding: 22px 0;
     }
+
+    .runner-filter-form {
+        grid-template-columns: 1fr;
+    }
 }
 
 @media (min-width: 769px) {
@@ -436,6 +440,8 @@ html[data-theme='dark'] .dashboard-hero {
     display: flex;
     flex-direction: column;
     gap: 10px;
+    overflow-y: auto;
+    padding-bottom: 84px;
 }
 
 .dashboard-app__hero {
@@ -460,6 +466,28 @@ html[data-theme='dark'] .dashboard-hero {
     font-size: 12px;
     color: var(--muted-text);
     text-align: center;
+}
+
+.runner-filter-form {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
+    align-items: end;
+}
+
+.runner-filter-form label {
+    display: block;
+}
+
+.runner-filter-form select {
+    width: 100%;
+    margin: 6px 0 0;
+    padding: 10px;
+}
+
+.runner-filter-form .cta-button {
+    width: 100%;
+    margin-left: 0 !important;
 }
 
 .bottom-nav {

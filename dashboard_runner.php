@@ -7,18 +7,21 @@ require __DIR__ . '/db/database.php';
 
 use App\Repositories\TaskRepository;
 use App\Repositories\UserRepository;
+use App\Services\RunnerAvailabilityService;
 
 requireRole(['runner', 'both']);
 
 $userId = (int) currentUserId();
 $taskRepo = new TaskRepository($pdo);
 $userRepo = new UserRepository($pdo);
+$availabilityService = new RunnerAvailabilityService($userRepo);
 
 $user = $userRepo->findById($userId);
+$availability = $availabilityService->status($userId);
 $tasks = $taskRepo->byRunner($userId);
 $trackableTaskIds = array_values(array_map(
     static fn (array $task): int => (int) $task['id'],
-    array_filter($tasks, static fn (array $t): bool => in_array($t['status'], ['accepted', 'in_progress'], true))
+    array_filter($tasks, static fn (array $t): bool => in_array($t['status'], ['accepted', 'in_progress', 'awaiting_confirmation'], true))
 ));
 $mapboxToken = trim((string) (getenv('MAPBOX_PUBLIC_TOKEN') ?: ''));
 ?>
@@ -45,8 +48,22 @@ $mapboxToken = trim((string) (getenv('MAPBOX_PUBLIC_TOKEN') ?: ''));
             <div id="runner-live-map" class="live-map live-map--app"></div>
         </article>
 
+        <article class="card card--compact" style="flex:0 0 auto;">
+            <h3 style="margin:0 0 8px;">Availability</h3>
+            <p id="availability-status-text" style="margin:0 0 10px;">
+                <?php if ($availability['is_available']): ?>You are discoverable for new tasks.<?php else: ?>You are hidden from new task requests.<?php endif; ?>
+            </p>
+            <div class="button-stack">
+                <button class="cta-button cta-button--block" type="button" id="availability-on" <?php echo $availability['is_available'] ? 'disabled' : ''; ?>>Go Available</button>
+                <button class="cta-button cta-button--block cta-button--muted" type="button" id="availability-off" <?php echo !$availability['is_available'] ? 'disabled' : ''; ?>>Go Unavailable</button>
+            </div>
+            <p id="availability-updated-at" class="dashboard-app__status-chip" style="margin-top:8px; text-align:left;">
+                <?php echo $availability['is_online'] ? 'Online now' : 'Offline (location heartbeat stale)'; ?>
+            </p>
+        </article>
+
         <p id="location-sharing-status" class="dashboard-app__status-chip">
-            <?php echo $trackableTaskIds ? 'Live sharing enabled for active tasks.' : 'No accepted/in-progress tasks right now.'; ?>
+            <?php echo $trackableTaskIds ? 'Live sharing enabled for active tasks.' : 'No accepted/in-progress/awaiting-confirmation tasks right now.'; ?>
         </p>
     </div>
 </main>
@@ -57,6 +74,7 @@ require __DIR__ . '/includes/bottom_nav.php';
 ?>
 <script>
 window.TUMAMI_IS_AUTHENTICATED = true;
+window.TUMAMI_CSRF_TOKEN = <?php echo json_encode(csrf_token(), JSON_THROW_ON_ERROR); ?>;
 </script>
 <script src="assets/js/header.js" defer></script>
 <link href="https://api.mapbox.com/mapbox-gl-js/v3.5.1/mapbox-gl.css" rel="stylesheet">
@@ -65,8 +83,16 @@ window.TUMAMI_IS_AUTHENTICATED = true;
 (() => {
     const taskIds = <?php echo json_encode($trackableTaskIds, JSON_THROW_ON_ERROR); ?>;
     const mapboxToken = <?php echo json_encode($mapboxToken, JSON_THROW_ON_ERROR); ?>;
+    const csrfToken = window.TUMAMI_CSRF_TOKEN || '';
     const statusEl = document.getElementById('location-sharing-status');
     const mapStatusEl = document.getElementById('runner-map-status');
+    const availabilityStatusEl = document.getElementById('availability-status-text');
+    const availabilityUpdatedEl = document.getElementById('availability-updated-at');
+    const availabilityOnBtn = document.getElementById('availability-on');
+    const availabilityOffBtn = document.getElementById('availability-off');
+
+    availabilityOnBtn?.addEventListener('click', () => setAvailability(true));
+    availabilityOffBtn?.addEventListener('click', () => setAvailability(false));
 
     let lastSentAt = 0;
     const sendIntervalMs = 5000;
@@ -192,8 +218,44 @@ window.TUMAMI_IS_AUTHENTICATED = true;
 
     connectStream();
 
+    async function setAvailability(isAvailable) {
+        if (!availabilityStatusEl || !availabilityOnBtn || !availabilityOffBtn) {
+            return;
+        }
+
+        availabilityOnBtn.disabled = true;
+        availabilityOffBtn.disabled = true;
+        availabilityStatusEl.textContent = 'Saving availability...';
+
+        try {
+            const response = await fetch('runner_availability_update.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': csrfToken
+                },
+                credentials: 'same-origin',
+                body: JSON.stringify({ is_available: isAvailable })
+            });
+
+            const payload = await response.json();
+            if (!response.ok || !payload.ok) {
+                throw new Error(payload.error || 'Failed to update availability.');
+            }
+
+            availabilityStatusEl.textContent = payload.message || (isAvailable ? 'You are now discoverable.' : 'You are now hidden from new task requests.');
+            availabilityUpdatedEl.textContent = payload.status?.is_online ? 'Online now' : 'Offline (location heartbeat stale)';
+            availabilityOnBtn.disabled = !!payload.status?.is_available;
+            availabilityOffBtn.disabled = !payload.status?.is_available;
+        } catch (_error) {
+            availabilityStatusEl.textContent = 'Unable to update availability. Please try again.';
+            availabilityOnBtn.disabled = false;
+            availabilityOffBtn.disabled = false;
+        }
+    }
+
     if (taskIds.length === 0) {
-        statusEl.textContent = 'No accepted/in-progress tasks right now.';
+        statusEl.textContent = 'No accepted/in-progress/awaiting-confirmation tasks right now.';
         return;
     }
 
