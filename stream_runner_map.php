@@ -21,6 +21,7 @@ $runnerId = (int) currentUserId();
 $taskRepo = new TaskRepository($pdo);
 
 $profileStmt = $pdo->prepare('SELECT latitude, longitude, location_updated_at FROM runner_profiles WHERE user_id = :id LIMIT 1');
+$clientStmt = $pdo->prepare('SELECT latitude, longitude FROM users WHERE id = :client_id LIMIT 1');
 
 $startedAt = time();
 $maxRuntimeSeconds = 55;
@@ -61,7 +62,7 @@ while (!connection_aborted()) {
     }
 
     $activeTaskStmt = $pdo->prepare(
-        'SELECT id, client_latitude, client_longitude
+        'SELECT id, client_id, client_latitude, client_longitude
          FROM tasks
          WHERE runner_id = :runner_id
            AND status IN ("accepted", "in_progress", "awaiting_confirmation")
@@ -70,6 +71,18 @@ while (!connection_aborted()) {
     );
     $activeTaskStmt->execute(['runner_id' => $runnerId]);
     $activeTask = $activeTaskStmt->fetch();
+
+    $liveClientLatitude = null;
+    $liveClientLongitude = null;
+    if ($activeTask && isset($activeTask['client_id'])) {
+        $clientStmt->execute(['client_id' => (int) $activeTask['client_id']]);
+        $client = $clientStmt->fetch();
+
+        if ($client && $client['latitude'] !== null && $client['longitude'] !== null) {
+            $liveClientLatitude = (float) $client['latitude'];
+            $liveClientLongitude = (float) $client['longitude'];
+        }
+    }
 
     $payload = [
         'server_time' => gmdate('c'),
@@ -80,8 +93,8 @@ while (!connection_aborted()) {
         ],
         'jobs' => $jobs,
         'client' => [
-            'latitude' => $activeTask && $activeTask['client_latitude'] !== null ? (float) $activeTask['client_latitude'] : null,
-            'longitude' => $activeTask && $activeTask['client_longitude'] !== null ? (float) $activeTask['client_longitude'] : null,
+            'latitude' => $liveClientLatitude ?? ($activeTask && $activeTask['client_latitude'] !== null ? (float) $activeTask['client_latitude'] : null),
+            'longitude' => $liveClientLongitude ?? ($activeTask && $activeTask['client_longitude'] !== null ? (float) $activeTask['client_longitude'] : null),
             'task_id' => $activeTask ? (int) $activeTask['id'] : null,
         ],
     ];

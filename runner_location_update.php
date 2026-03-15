@@ -42,7 +42,7 @@ $taskStmt = $pdo->prepare(
     'SELECT id FROM tasks
      WHERE runner_id = ?
        AND id IN (' . $taskPlaceholders . ')
-       AND status IN ("accepted", "in_progress")'
+       AND status IN ("accepted", "in_progress", "awaiting_confirmation")'
 );
 $taskStmt->execute([$runnerId, ...$taskIds]);
 $authorizedTaskIds = array_map('intval', array_column($taskStmt->fetchAll(), 'id'));

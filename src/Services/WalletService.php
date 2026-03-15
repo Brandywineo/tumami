@@ -35,6 +35,18 @@ class WalletService
         }
 
         try {
+            $existingRunnerCreditStmt = $this->pdo->prepare('SELECT id FROM wallet_transactions WHERE task_id = :task_id AND user_id = :user_id AND type = "task_earning" AND direction = "credit" AND status = "completed" LIMIT 1');
+            $existingRunnerCreditStmt->execute([
+                'task_id' => $taskId,
+                'user_id' => $runnerId,
+            ]);
+            if ($existingRunnerCreditStmt->fetch()) {
+                if ($ownsTransaction) {
+                    $this->pdo->commit();
+                }
+                return;
+            }
+
             $runnerStmt = $this->pdo->prepare('INSERT INTO wallet_transactions (user_id, task_id, direction, type, amount, status, reference) VALUES (:user_id, :task_id, "credit", "task_earning", :amount, "completed", :reference)');
             $runnerStmt->execute([
                 'user_id' => $runnerId,
@@ -43,12 +55,16 @@ class WalletService
                 'reference' => 'TASK_COMPLETION',
             ]);
 
-            $platformStmt = $this->pdo->prepare('INSERT INTO wallet_transactions (user_id, task_id, direction, type, amount, status, reference) VALUES (1, :task_id, "credit", "commission", :amount, "completed", :reference)');
-            $platformStmt->execute([
-                'task_id' => $taskId,
-                'amount' => $commission,
-                'reference' => 'PLATFORM_COMMISSION',
-            ]);
+            $existingPlatformCommissionStmt = $this->pdo->prepare('SELECT id FROM wallet_transactions WHERE task_id = :task_id AND user_id = 1 AND type = "commission" AND direction = "credit" AND status = "completed" LIMIT 1');
+            $existingPlatformCommissionStmt->execute(['task_id' => $taskId]);
+            if (!$existingPlatformCommissionStmt->fetch()) {
+                $platformStmt = $this->pdo->prepare('INSERT INTO wallet_transactions (user_id, task_id, direction, type, amount, status, reference) VALUES (1, :task_id, "credit", "commission", :amount, "completed", :reference)');
+                $platformStmt->execute([
+                    'task_id' => $taskId,
+                    'amount' => $commission,
+                    'reference' => 'PLATFORM_COMMISSION',
+                ]);
+            }
 
             if ($ownsTransaction) {
                 $this->pdo->commit();
