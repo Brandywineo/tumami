@@ -6,12 +6,18 @@ require __DIR__ . '/includes/bootstrap.php';
 require __DIR__ . '/db/database.php';
 
 use App\Repositories\UserRepository;
+use App\Repositories\TaskRepository;
 
 requireRole(['client', 'both']);
 
 $userId = (int) currentUserId();
 $userRepo = new UserRepository($pdo);
 $user = $userRepo->findById($userId);
+$tasks = $taskRepo->byClient($userId);
+$activeStatuses = ['posted', 'accepted', 'in_progress', 'awaiting_confirmation'];
+$activeTasks = array_values(array_filter($tasks, static fn (array $task): bool => in_array($task['status'], $activeStatuses, true)));
+$completedTasks = array_values(array_filter($tasks, static fn (array $task): bool => $task['status'] === 'completed'));
+$historyTasks = array_values(array_filter($tasks, static fn (array $task): bool => in_array($task['status'], ['cancelled', 'disputed'], true)));
 $mapboxToken = trim((string) (getenv('MAPBOX_PUBLIC_TOKEN') ?: ''));
 ?>
 <!DOCTYPE html>
