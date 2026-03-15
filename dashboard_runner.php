@@ -18,7 +18,7 @@ $user = $userRepo->findById($userId);
 $tasks = $taskRepo->byRunner($userId);
 $trackableTaskIds = array_values(array_map(
     static fn (array $task): int => (int) $task['id'],
-    array_filter($tasks, static fn (array $t): bool => in_array($t['status'], ['accepted', 'in_progress'], true))
+    array_filter($tasks, static fn (array $t): bool => in_array($t['status'], ['accepted', 'in_progress', 'awaiting_confirmation'], true))
 ));
 $mapboxToken = trim((string) (getenv('MAPBOX_PUBLIC_TOKEN') ?: ''));
 ?>
@@ -46,7 +46,7 @@ $mapboxToken = trim((string) (getenv('MAPBOX_PUBLIC_TOKEN') ?: ''));
         </article>
 
         <p id="location-sharing-status" class="dashboard-app__status-chip">
-            <?php echo $trackableTaskIds ? 'Live sharing enabled for active tasks.' : 'No accepted/in-progress tasks right now.'; ?>
+            <?php echo $trackableTaskIds ? 'Live sharing enabled for active tasks.' : 'No accepted/in-progress/awaiting-confirmation tasks right now.'; ?>
         </p>
     </div>
 </main>
@@ -193,7 +193,7 @@ window.TUMAMI_IS_AUTHENTICATED = true;
     connectStream();
 
     if (taskIds.length === 0) {
-        statusEl.textContent = 'No accepted/in-progress tasks right now.';
+        statusEl.textContent = 'No accepted/in-progress/awaiting-confirmation tasks right now.';
         return;
     }
 
