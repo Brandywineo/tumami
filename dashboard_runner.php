@@ -14,8 +14,6 @@ requireRole(['runner', 'both']);
 $userId = (int) currentUserId();
 $taskRepo = new TaskRepository($pdo);
 $userRepo = new UserRepository($pdo);
-$availabilityService = new RunnerAvailabilityService($userRepo);
-
 $user = $userRepo->findById($userId);
 $availability = $availabilityService->status($userId);
 $tasks = $taskRepo->byRunner($userId);
@@ -48,23 +46,7 @@ $mapboxToken = trim((string) (getenv('MAPBOX_PUBLIC_TOKEN') ?: ''));
             <div id="runner-live-map" class="live-map live-map--app"></div>
         </article>
 
-        <article class="card card--compact" style="flex:0 0 auto;">
-            <h3 style="margin:0 0 8px;">Availability</h3>
-            <p id="availability-status-text" style="margin:0 0 10px;">
-                <?php if ($availability['is_available']): ?>You are discoverable for new tasks.<?php else: ?>You are hidden from new task requests.<?php endif; ?>
-            </p>
-            <div class="button-stack">
-                <button class="cta-button cta-button--block" type="button" id="availability-on" <?php echo $availability['is_available'] ? 'disabled' : ''; ?>>Go Available</button>
-                <button class="cta-button cta-button--block cta-button--muted" type="button" id="availability-off" <?php echo !$availability['is_available'] ? 'disabled' : ''; ?>>Go Unavailable</button>
-            </div>
-            <p id="availability-updated-at" class="dashboard-app__status-chip" style="margin-top:8px; text-align:left;">
-                <?php echo $availability['is_online'] ? 'Online now' : 'Offline (location heartbeat stale)'; ?>
-            </p>
-        </article>
 
-        <p id="location-sharing-status" class="dashboard-app__status-chip">
-            <?php echo $trackableTaskIds ? 'Live sharing enabled for active tasks.' : 'No accepted/in-progress/awaiting-confirmation tasks right now.'; ?>
-        </p>
     </div>
 </main>
 <?php
@@ -83,8 +65,6 @@ window.TUMAMI_CSRF_TOKEN = <?php echo json_encode(csrf_token(), JSON_THROW_ON_ER
 (() => {
     const taskIds = <?php echo json_encode($trackableTaskIds, JSON_THROW_ON_ERROR); ?>;
     const mapboxToken = <?php echo json_encode($mapboxToken, JSON_THROW_ON_ERROR); ?>;
-    const csrfToken = window.TUMAMI_CSRF_TOKEN || '';
-    const statusEl = document.getElementById('location-sharing-status');
     const mapStatusEl = document.getElementById('runner-map-status');
     const availabilityStatusEl = document.getElementById('availability-status-text');
     const availabilityUpdatedEl = document.getElementById('availability-updated-at');
@@ -255,12 +235,12 @@ window.TUMAMI_CSRF_TOKEN = <?php echo json_encode(csrf_token(), JSON_THROW_ON_ER
     }
 
     if (taskIds.length === 0) {
-        statusEl.textContent = 'No accepted/in-progress/awaiting-confirmation tasks right now.';
+        mapStatusEl.textContent = 'Live map ready. No accepted/in-progress/awaiting-confirmation tasks yet.';
         return;
     }
 
     if (!navigator.geolocation) {
-        statusEl.textContent = 'Geolocation is not supported on this device/browser.';
+        mapStatusEl.textContent = 'Geolocation is not supported on this device/browser.';
         return;
     }
 
@@ -278,17 +258,17 @@ window.TUMAMI_CSRF_TOKEN = <?php echo json_encode(csrf_token(), JSON_THROW_ON_ER
             });
 
             if (!response.ok) throw new Error('Location update failed');
-            statusEl.textContent = 'Live sharing enabled for active tasks.';
+mapStatusEl.textContent = 'Live sharing enabled for active tasks.';
             updateRunnerMarker(lat, lng);
         } catch (_error) {
-            statusEl.textContent = 'Unable to send location. Check network and keep this page open.';
+mapStatusEl.textContent = 'Unable to send location. Check network and keep this page open.';
         }
     }
 
     navigator.geolocation.watchPosition(
         (position) => sendLocation(position.coords.latitude, position.coords.longitude, position.coords.accuracy ?? null),
         () => {
-            statusEl.textContent = 'Location permission denied or unavailable. Please allow location to enable tracking.';
+mapStatusEl.textContent = 'Location permission denied or unavailable. Please allow location to enable tracking.';
         },
         { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 }
     );

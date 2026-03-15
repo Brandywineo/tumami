@@ -22,6 +22,7 @@ if ($role === 'client') {
 
     $settingsDrawerItems = [
         ['label' => 'Client Dashboard', 'href' => 'dashboard_client.php'],
+        ['label' => 'My Tasks', 'href' => 'client_tasks.php'],
         ['label' => 'Runner Dashboard', 'href' => 'dashboard_runner.php'],
         ['label' => 'Browse Tasks', 'href' => 'browse_tasks.php'],
         ['label' => 'Active Runners', 'href' => 'active_runners.php'],
@@ -40,12 +41,13 @@ if ($role === 'client') {
 
     $settingsDrawerItems = [
         ['label' => 'Client Dashboard', 'href' => 'dashboard_client.php'],
+        ['label' => 'My Tasks', 'href' => 'client_tasks.php'],
         ['label' => 'Runner Dashboard', 'href' => 'dashboard_runner.php'],
         ['label' => 'Browse Tasks', 'href' => 'browse_tasks.php'],
         ['label' => 'Active Runners', 'href' => 'active_runners.php'],
         ['label' => 'Top Up Wallet', 'href' => 'topup.php'],
         ['label' => 'Profile Settings', 'href' => 'settings.php'],
-        ['label' => 'Runner Filters', 'href' => 'settings.php#runner-filters'],
+        ['label' => 'Runner Availability', 'href' => 'runner_availability.php'],
         ['label' => 'Map Settings', 'href' => 'settings.php#map-settings'],
     ];
 }

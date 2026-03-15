@@ -12,8 +12,6 @@ requireRole(['client', 'both']);
 
 $userId = (int) currentUserId();
 $userRepo = new UserRepository($pdo);
-$taskRepo = new TaskRepository($pdo);
-
 $user = $userRepo->findById($userId);
 $tasks = $taskRepo->byClient($userId);
 $activeStatuses = ['posted', 'accepted', 'in_progress', 'awaiting_confirmation'];
@@ -45,35 +43,6 @@ $mapboxToken = trim((string) (getenv('MAPBOX_PUBLIC_TOKEN') ?: ''));
             <div id="client-live-map" class="live-map live-map--app"></div>
         </article>
 
-        <section class="grid grid--dashboard" aria-label="Client task summaries">
-            <article class="card card--compact">
-                <h3 style="margin:0 0 8px;">Active Tasks</h3>
-                <p class="stat-value"><?php echo count($activeTasks); ?></p>
-                <?php if (!$activeTasks): ?><p>No active tasks right now.</p><?php endif; ?>
-                <?php foreach (array_slice($activeTasks, 0, 3) as $task): ?>
-                    <p><strong><?php echo h($task['title']); ?></strong> · <?php echo h($task['status']); ?></p>
-                <?php endforeach; ?>
-                <p><a href="client_tasks.php" class="cta-button cta-button--block">View all tasks</a></p>
-            </article>
-
-            <article class="card card--compact">
-                <h3 style="margin:0 0 8px;">Completed</h3>
-                <p class="stat-value"><?php echo count($completedTasks); ?></p>
-                <?php if (!$completedTasks): ?><p>No completed tasks yet.</p><?php endif; ?>
-                <?php foreach (array_slice($completedTasks, 0, 3) as $task): ?>
-                    <p><strong><?php echo h($task['title']); ?></strong> · done</p>
-                <?php endforeach; ?>
-            </article>
-
-            <article class="card card--compact">
-                <h3 style="margin:0 0 8px;">Issues / Cancelled</h3>
-                <p class="stat-value"><?php echo count($historyTasks); ?></p>
-                <?php if (!$historyTasks): ?><p>No disputed or cancelled tasks.</p><?php endif; ?>
-                <?php foreach (array_slice($historyTasks, 0, 3) as $task): ?>
-                    <p><strong><?php echo h($task['title']); ?></strong> · <?php echo h($task['status']); ?></p>
-                <?php endforeach; ?>
-            </article>
-        </section>
     </div>
 </main>
 <?php
