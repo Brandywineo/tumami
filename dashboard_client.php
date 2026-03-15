@@ -12,6 +12,7 @@ requireRole(['client', 'both']);
 
 $userId = (int) currentUserId();
 $userRepo = new UserRepository($pdo);
+$taskRepo = new TaskRepository($pdo);
 $user = $userRepo->findById($userId);
 $tasks = $taskRepo->byClient($userId);
 $activeStatuses = ['posted', 'accepted', 'in_progress', 'awaiting_confirmation'];
