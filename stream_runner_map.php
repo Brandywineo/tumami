@@ -6,6 +6,7 @@ require __DIR__ . '/includes/bootstrap.php';
 require __DIR__ . '/db/database.php';
 
 use App\Repositories\TaskRepository;
+use App\Services\FilesystemCache;
 
 requireRole(['runner', 'both']);
 
@@ -19,6 +20,8 @@ header('X-Accel-Buffering: no');
 
 $runnerId = (int) currentUserId();
 $taskRepo = new TaskRepository($pdo);
+$cache = new FilesystemCache();
+$cacheTtlSeconds = 10;
 
 $profileStmt = $pdo->prepare('SELECT latitude, longitude, location_updated_at FROM runner_profiles WHERE user_id = :id LIMIT 1');
 $clientStmt = $pdo->prepare('SELECT latitude, longitude FROM users WHERE id = :client_id LIMIT 1');
@@ -30,36 +33,41 @@ while (!connection_aborted()) {
     $profileStmt->execute(['id' => $runnerId]);
     $runnerProfile = $profileStmt->fetch() ?: ['latitude' => null, 'longitude' => null, 'location_updated_at' => null];
 
-    $availableTasks = $taskRepo->browsePostedForRunner($runnerId);
-    $jobs = [];
-    foreach ($availableTasks as $task) {
-        $lat = null;
-        $lng = null;
+    $cacheKey = sprintf('stream_runner_map:jobs:v1:runner=%d', $runnerId);
+    $jobs = $cache->remember($cacheKey, $cacheTtlSeconds, static function () use ($taskRepo, $runnerId): array {
+        $availableTasks = $taskRepo->browsePostedForRunner($runnerId);
+        $jobs = [];
+        foreach ($availableTasks as $task) {
+            $lat = null;
+            $lng = null;
 
-        if ($task['pickup_latitude'] !== null && $task['pickup_longitude'] !== null) {
-            $lat = (float) $task['pickup_latitude'];
-            $lng = (float) $task['pickup_longitude'];
-        } elseif ($task['client_latitude'] !== null && $task['client_longitude'] !== null) {
-            $lat = (float) $task['client_latitude'];
-            $lng = (float) $task['client_longitude'];
-        } elseif ($task['dropoff_latitude'] !== null && $task['dropoff_longitude'] !== null) {
-            $lat = (float) $task['dropoff_latitude'];
-            $lng = (float) $task['dropoff_longitude'];
+            if ($task['pickup_latitude'] !== null && $task['pickup_longitude'] !== null) {
+                $lat = (float) $task['pickup_latitude'];
+                $lng = (float) $task['pickup_longitude'];
+            } elseif ($task['client_latitude'] !== null && $task['client_longitude'] !== null) {
+                $lat = (float) $task['client_latitude'];
+                $lng = (float) $task['client_longitude'];
+            } elseif ($task['dropoff_latitude'] !== null && $task['dropoff_longitude'] !== null) {
+                $lat = (float) $task['dropoff_latitude'];
+                $lng = (float) $task['dropoff_longitude'];
+            }
+
+            if ($lat === null || $lng === null) {
+                continue;
+            }
+
+            $jobs[] = [
+                'id' => (int) $task['id'],
+                'title' => (string) $task['title'],
+                'latitude' => $lat,
+                'longitude' => $lng,
+                'zone_name' => (string) ($task['zone_name'] ?? ''),
+                'runner_fee' => (float) $task['runner_fee'],
+            ];
         }
 
-        if ($lat === null || $lng === null) {
-            continue;
-        }
-
-        $jobs[] = [
-            'id' => (int) $task['id'],
-            'title' => (string) $task['title'],
-            'latitude' => $lat,
-            'longitude' => $lng,
-            'zone_name' => (string) ($task['zone_name'] ?? ''),
-            'runner_fee' => (float) $task['runner_fee'],
-        ];
-    }
+        return $jobs;
+    });
 
     $activeTaskStmt = $pdo->prepare(
         'SELECT id, client_id, client_latitude, client_longitude
