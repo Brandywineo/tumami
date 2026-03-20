@@ -6,6 +6,7 @@ require __DIR__ . '/includes/bootstrap.php';
 require __DIR__ . '/db/database.php';
 
 use App\Repositories\UserRepository;
+use App\Services\FilesystemCache;
 
 requireRole(['client', 'both']);
 
@@ -38,6 +39,8 @@ $runnerLocationStmt = $pdo->prepare(
 );
 $runnerProfileStmt = $pdo->prepare('SELECT latitude, longitude, location_updated_at FROM runner_profiles WHERE user_id = :runner_id LIMIT 1');
 $repo = new UserRepository($pdo);
+$cache = new FilesystemCache();
+$cacheTtlSeconds = 10;
 
 $startedAt = time();
 $maxRuntimeSeconds = 55;
@@ -77,23 +80,34 @@ while (!connection_aborted()) {
             ];
         }
     } elseif ($lat !== null && $lng !== null) {
-        $runnerRows = array_values(array_filter(
-            $repo->activeRunners(null, 'rating', $lat, $lng),
-            static fn (array $runner): bool => isset($runner['distance_km']) && $runner['distance_km'] !== null && (float) $runner['distance_km'] <= $radiusKm
-        ));
+        $cacheKey = sprintf(
+            'stream_client_map:runners:v1:radius=%d:lat=%0.3f:lng=%0.3f',
+            $radiusKm,
+            round($lat, 3),
+            round($lng, 3)
+        );
+
+        $runners = $cache->remember($cacheKey, $cacheTtlSeconds, static function () use ($repo, $lat, $lng, $radiusKm): array {
+            $runnerRows = array_values(array_filter(
+                $repo->activeRunners(null, 'rating', $lat, $lng),
+                static fn (array $runner): bool => isset($runner['distance_km']) && $runner['distance_km'] !== null && (float) $runner['distance_km'] <= $radiusKm
+            ));
+
+            return array_map(static function (array $runner): array {
+                return [
+                    'id' => (int) $runner['id'],
+                    'name' => (string) ($runner['full_name'] ?? 'Runner'),
+                    'latitude' => isset($runner['latitude']) && $runner['latitude'] !== null ? (float) $runner['latitude'] : null,
+                    'longitude' => isset($runner['longitude']) && $runner['longitude'] !== null ? (float) $runner['longitude'] : null,
+                    'distance_km' => isset($runner['distance_km']) && $runner['distance_km'] !== null ? round((float) $runner['distance_km'], 2) : null,
+                    'vehicle_type' => (string) ($runner['vehicle_type'] ?? 'walking'),
+                    'location_updated_at' => $runner['location_updated_at'] ?? null,
+                ];
+            }, $runnerRows);
+        });
     }
 
-    $runners = array_map(static function (array $runner): array {
-        return [
-            'id' => (int) $runner['id'],
-            'name' => (string) ($runner['full_name'] ?? 'Runner'),
-            'latitude' => isset($runner['latitude']) && $runner['latitude'] !== null ? (float) $runner['latitude'] : null,
-            'longitude' => isset($runner['longitude']) && $runner['longitude'] !== null ? (float) $runner['longitude'] : null,
-            'distance_km' => isset($runner['distance_km']) && $runner['distance_km'] !== null ? round((float) $runner['distance_km'], 2) : null,
-            'vehicle_type' => (string) ($runner['vehicle_type'] ?? 'walking'),
-            'location_updated_at' => $runner['location_updated_at'] ?? null,
-        ];
-    }, $runnerRows);
+    $runners ??= [];
 
     $payload = [
         'server_time' => gmdate('c'),
