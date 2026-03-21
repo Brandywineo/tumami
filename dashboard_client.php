@@ -19,12 +19,26 @@ $walletService = new WalletService($pdo);
 $user = $userRepo->findById($userId);
 $tasks = $taskRepo->byClient($userId);
 $balances = $walletService->balances($userId);
-
-$active = array_filter($tasks, static fn (array $t): bool => in_array($t['status'], ['posted', 'accepted', 'in_progress', 'awaiting_confirmation'], true));
-$completed = array_filter($tasks, static fn (array $t): bool => $t['status'] === 'completed');
-$awaitingConfirmation = array_filter($tasks, static fn (array $t): bool => $t['status'] === 'awaiting_confirmation');
-$recentTasks = array_slice($tasks, 0, 8);
+$active = array_values(array_filter($tasks, static fn (array $t): bool => in_array($t['status'], ['posted', 'accepted', 'in_progress', 'awaiting_confirmation'], true)));
+$completed = array_values(array_filter($tasks, static fn (array $t): bool => $t['status'] === 'completed'));
 $mapboxToken = trim((string) (getenv('MAPBOX_PUBLIC_TOKEN') ?: ''));
+
+$taskMapData = array_map(static function (array $task): array {
+    return [
+        'id' => (int) $task['id'],
+        'title' => (string) $task['title'],
+        'status' => (string) $task['status'],
+        'zone_name' => (string) ($task['zone_name'] ?? ''),
+        'runner_name' => $task['runner_name'] !== null ? (string) $task['runner_name'] : null,
+        'runner_id' => $task['runner_id'] !== null ? (int) $task['runner_id'] : null,
+        'pickup_latitude' => $task['pickup_latitude'] !== null ? (float) $task['pickup_latitude'] : null,
+        'pickup_longitude' => $task['pickup_longitude'] !== null ? (float) $task['pickup_longitude'] : null,
+        'dropoff_latitude' => $task['dropoff_latitude'] !== null ? (float) $task['dropoff_latitude'] : null,
+        'dropoff_longitude' => $task['dropoff_longitude'] !== null ? (float) $task['dropoff_longitude'] : null,
+        'client_latitude' => $task['client_latitude'] !== null ? (float) $task['client_latitude'] : null,
+        'client_longitude' => $task['client_longitude'] !== null ? (float) $task['client_longitude'] : null,
+    ];
+}, $tasks);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -35,216 +49,242 @@ $mapboxToken = trim((string) (getenv('MAPBOX_PUBLIC_TOKEN') ?: ''));
 </head>
 <body>
 <?php require __DIR__ . '/includes/header.php'; ?>
-<section class="section section--compact">
-    <div class="container container--mobile-dense">
-        <div class="dashboard-hero card card--compact">
-            <h2 class="dashboard-title">Welcome, <?php echo h($user['full_name'] ?? 'Client'); ?> 👋</h2>
-            <p class="dashboard-subtitle">Manage errands, pick runners, and track jobs live.</p>
-        </div>
+<section class="app-shell">
+    <div class="container app-shell__container">
+        <div class="app-screen">
+            <div class="app-map-panel">
+                <div id="client-dashboard-map" class="app-map-canvas"></div>
+                <div class="app-map-overlay">
+                    <article class="map-status-card">
+                        <p class="eyebrow">Client view</p>
+                        <h2>Welcome, <?php echo h($user['full_name'] ?? 'Client'); ?> 👋</h2>
+                        <p id="client-map-summary">Track runners and focus errands from a single live map.</p>
+                    </article>
+                </div>
+            </div>
 
-        <div class="grid grid--dashboard">
-            <article class="card card--compact">
-                <h3>Wallet</h3>
-                <p class="stat-value">KES <?php echo number_format($balances['available'], 2); ?></p>
-                <a class="cta-button cta-button--block" href="topup.php">Add Balance</a>
-            </article>
-            <article class="card card--compact">
-                <h3>Quick Actions</h3>
-                <div class="button-stack">
+            <aside class="app-sheet">
+                <div class="app-sheet__topbar">
+                    <div>
+                        <p class="eyebrow">Wallet</p>
+                        <div class="sheet-balance">KES <?php echo number_format($balances['available'], 2); ?></div>
+                    </div>
+                    <a class="cta-button" href="topup.php">Add Balance</a>
+                </div>
+
+                <div class="sheet-action-row compact-form-gap">
                     <a class="cta-button cta-button--block" href="post_task.php">Post Task</a>
                     <a class="cta-button cta-button--block cta-button--muted" href="active_runners.php">Choose Runner</a>
                 </div>
-            </article>
-            <article class="card card--compact">
-                <h3>Snapshot</h3>
-                <p><strong>Active:</strong> <?php echo count($active); ?></p>
-                <p><strong>Awaiting:</strong> <?php echo count($awaitingConfirmation); ?></p>
-                <p><strong>Completed:</strong> <?php echo count($completed); ?></p>
-            </article>
-        </div>
 
-        <h3 class="section-label">Live & Recent Tasks</h3>
-        <div class="grid grid--dashboard">
-            <?php if (!$recentTasks): ?><p>No tasks yet.</p><?php endif; ?>
-            <?php foreach ($recentTasks as $task): ?>
-                <article class="card card--compact">
-                    <h3><?php echo h($task['title']); ?></h3>
-                    <p><strong>Status:</strong> <?php echo h($task['status']); ?></p>
-                    <p><strong>Area:</strong> <?php echo h($task['zone_name']); ?></p>
-                    <p><strong>Runner:</strong> <?php echo h($task['runner_name'] ?? 'Unassigned'); ?></p>
-                    <?php if ($task['runner_id'] !== null && in_array($task['status'], ['accepted', 'in_progress', 'awaiting_confirmation'], true)): ?>
-                        <button class="cta-button cta-button--block check-runner-location" type="button" data-task-id="<?php echo (int) $task['id']; ?>">Check Runner Location</button>
-                    <?php endif; ?>
-                    <?php if ($task['status'] === 'awaiting_confirmation'): ?>
-                        <form method="post" action="task_status.php" class="compact-form-gap">
-                            <?php echo csrf_field(); ?>
-                            <input type="hidden" name="task_id" value="<?php echo (int) $task['id']; ?>">
-                            <input type="hidden" name="status" value="completed">
-                            <button class="cta-button cta-button--block" type="submit">Approve Completion</button>
-                        </form>
-                    <?php endif; ?>
-                </article>
-            <?php endforeach; ?>
+                <div class="sheet-stats compact-form-gap">
+                    <div class="sheet-stat-card">
+                        <span>Active</span>
+                        <strong><?php echo count($active); ?></strong>
+                    </div>
+                    <div class="sheet-stat-card">
+                        <span>Completed</span>
+                        <strong><?php echo count($completed); ?></strong>
+                    </div>
+                    <div class="sheet-stat-card">
+                        <span>Total</span>
+                        <strong><?php echo count($tasks); ?></strong>
+                    </div>
+                </div>
+
+                <div class="app-sheet__section">
+                    <div class="app-sheet__section-head">
+                        <h3>Task Queue</h3>
+                        <span><?php echo count($tasks); ?> tasks</span>
+                    </div>
+                    <div class="task-feed">
+                        <?php if (!$tasks): ?><p>No tasks yet.</p><?php endif; ?>
+                        <?php foreach ($tasks as $task): ?>
+                            <article class="task-feed__item<?php echo in_array($task['status'], ['accepted', 'in_progress', 'awaiting_confirmation'], true) ? ' task-feed__item--live' : ''; ?>" data-task-card-id="<?php echo (int) $task['id']; ?>">
+                                <div>
+                                    <h4><?php echo h($task['title']); ?></h4>
+                                    <p><?php echo h($task['status']); ?> · <?php echo h($task['zone_name']); ?></p>
+                                    <p>Runner: <?php echo h($task['runner_name'] ?? 'Unassigned'); ?></p>
+                                </div>
+                                <div class="task-feed__actions">
+                                    <button class="cta-button cta-button--ghost focus-task-map" type="button" data-task-id="<?php echo (int) $task['id']; ?>">Show</button>
+                                    <?php if ($task['runner_id'] !== null && in_array($task['status'], ['accepted', 'in_progress', 'awaiting_confirmation'], true)): ?>
+                                        <button class="cta-button check-runner-location" type="button" data-task-id="<?php echo (int) $task['id']; ?>">Track</button>
+                                    <?php endif; ?>
+                                    <?php if ($task['status'] === 'awaiting_confirmation'): ?>
+                                        <form method="post" action="task_status.php">
+                                            <?php echo csrf_field(); ?>
+                                            <input type="hidden" name="task_id" value="<?php echo (int) $task['id']; ?>">
+                                            <input type="hidden" name="status" value="completed">
+                                            <button class="cta-button cta-button--muted" type="submit">Approve</button>
+                                        </form>
+                                    <?php endif; ?>
+                                </div>
+                            </article>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+            </aside>
         </div>
     </div>
 </section>
 <?php require __DIR__ . '/includes/footer.php'; ?>
-
 <link href="https://api.mapbox.com/mapbox-gl-js/v3.5.1/mapbox-gl.css" rel="stylesheet">
 <script src="https://api.mapbox.com/mapbox-gl-js/v3.5.1/mapbox-gl.js"></script>
 <script>
 (() => {
     const mapboxToken = <?php echo json_encode($mapboxToken, JSON_THROW_ON_ERROR); ?>;
-    const buttons = document.querySelectorAll('.check-runner-location');
+    const tasks = <?php echo json_encode($taskMapData, JSON_THROW_ON_ERROR); ?>;
+    const focusButtons = document.querySelectorAll('.focus-task-map');
+    const trackButtons = document.querySelectorAll('.check-runner-location');
+    const summaryEl = document.getElementById('client-map-summary');
+    const mapHost = document.getElementById('client-dashboard-map');
 
-    if (!buttons.length) {
+    if (!mapHost) {
+        return;
+    }
+
+    if (!mapboxToken) {
+        mapHost.innerHTML = '<div class="map-empty-state">Map unavailable: missing MAPBOX_PUBLIC_TOKEN.</div>';
         return;
     }
 
     const getTheme = () => {
-        const cookieTheme = document.cookie
-            .split('; ')
-            .find((row) => row.startsWith('tumami_theme='))
-            ?.split('=')[1] || 'system';
+        const cookieTheme = document.cookie.split('; ').find((row) => row.startsWith('tumami_theme='))?.split('=')[1] || 'system';
         if (cookieTheme === 'dark') return 'dark';
         if (cookieTheme === 'light') return 'light';
         return (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
     };
 
-    const styleByTheme = () => getTheme() === 'dark'
-        ? 'mapbox://styles/mapbox/dark-v11'
-        : 'mapbox://styles/mapbox/streets-v12';
+    const styleByTheme = () => getTheme() === 'dark' ? 'mapbox://styles/mapbox/dark-v11' : 'mapbox://styles/mapbox/streets-v12';
+    const firstTask = tasks.find((task) => task.runner_id !== null) || tasks[0] || null;
 
-    const modal = document.createElement('div');
-    modal.style.position = 'fixed';
-    modal.style.inset = '0';
-    modal.style.background = 'rgba(0, 0, 0, 0.6)';
-    modal.style.display = 'none';
-    modal.style.alignItems = 'center';
-    modal.style.justifyContent = 'center';
-    modal.style.zIndex = '1000';
-
-    modal.innerHTML = `
-        <div style="background:var(--surface); width:min(96vw, 900px); border-radius:12px; overflow:hidden;">
-            <div style="padding:10px 12px; border-bottom:1px solid #ececec; display:flex; justify-content:space-between; align-items:center;">
-                <h3 style="margin:0;">Runner Location</h3>
-                <button id="close-tracker" class="cta-button" type="button">Close</button>
-            </div>
-            <div id="tracker-loading" style="padding:8px 12px;">Loading runner location…</div>
-            <div id="tracker-status" style="padding:0 12px 8px; color:var(--muted-text);"></div>
-            <div id="task-runner-map" style="width:100%; height:min(70vh, 460px);"></div>
-        </div>
-    `;
-
-    document.body.appendChild(modal);
-
-    const closeButton = modal.querySelector('#close-tracker');
-    const loadingEl = modal.querySelector('#tracker-loading');
-    const statusEl = modal.querySelector('#tracker-status');
-
-    let map = null;
-    let runnerMarker = null;
-    let activeTaskId = null;
-    let pollingTimer = null;
-
-    function clearPolling() {
-        if (pollingTimer !== null) {
-            clearInterval(pollingTimer);
-            pollingTimer = null;
-        }
-    }
-
-    function closeModal() {
-        clearPolling();
-        modal.style.display = 'none';
-        activeTaskId = null;
-        statusEl.textContent = '';
-        loadingEl.textContent = 'Loading runner location…';
-        loadingEl.style.display = 'block';
-    }
-
-    closeButton.addEventListener('click', closeModal);
-    modal.addEventListener('click', (event) => {
-        if (event.target === modal) {
-            closeModal();
-        }
+    mapboxgl.accessToken = mapboxToken;
+    const map = new mapboxgl.Map({
+        container: 'client-dashboard-map',
+        style: styleByTheme(),
+        center: [36.8219, -1.2921],
+        zoom: 12
     });
 
-    function ensureMap() {
-        if (map !== null) {
-            map.setStyle(styleByTheme());
-            return;
+    let pickupMarker = null;
+    let dropoffMarker = null;
+    let clientMarker = null;
+    let runnerMarker = null;
+    let runnerPoller = null;
+    let activeTaskId = firstTask ? firstTask.id : null;
+
+    function clearRunnerPolling() {
+        if (runnerPoller !== null) {
+            clearInterval(runnerPoller);
+            runnerPoller = null;
         }
-
-        if (!mapboxToken) {
-            loadingEl.textContent = 'Map is unavailable: missing MAPBOX_PUBLIC_TOKEN.';
-            return;
-        }
-
-        mapboxgl.accessToken = mapboxToken;
-        map = new mapboxgl.Map({
-            container: 'task-runner-map',
-            style: styleByTheme(),
-            center: [36.8219, -1.2921],
-            zoom: 13
-        });
-
-        const iconElement = document.createElement('div');
-        iconElement.textContent = '🏃';
-        iconElement.style.fontSize = '28px';
-        iconElement.style.lineHeight = '28px';
-        runnerMarker = new mapboxgl.Marker(iconElement)
-            .setLngLat([36.8219, -1.2921])
-            .addTo(map);
     }
 
-    async function loadRunnerLocation() {
-        if (!activeTaskId) return;
-
-        if (!navigator.onLine) {
-            loadingEl.style.display = 'block';
-            loadingEl.textContent = 'Loading runner location… network disconnected.';
-            statusEl.textContent = 'Waiting for internet connection.';
-            return;
-        }
-
-        try {
-            const response = await fetch(`runner_location.php?task_id=${encodeURIComponent(activeTaskId)}`, { credentials: 'same-origin' });
-            if (!response.ok) throw new Error('Unable to fetch location');
-
-            const payload = await response.json();
-
-            if (payload.latitude === null || payload.longitude === null) {
-                loadingEl.style.display = 'block';
-                loadingEl.textContent = 'Loading runner location…';
-                statusEl.textContent = 'Runner has not shared a GPS fix yet.';
-                return;
+    function setMarker(marker, lng, lat, color, fallbackLabel) {
+        if (lng === null || lat === null) {
+            if (marker) {
+                marker.remove();
             }
+            return null;
+        }
 
-            loadingEl.style.display = 'none';
-            runnerMarker.setLngLat([payload.longitude, payload.latitude]);
-            map.setCenter([payload.longitude, payload.latitude]);
+        if (!marker) {
+            if (fallbackLabel) {
+                const el = document.createElement('div');
+                el.textContent = fallbackLabel;
+                el.style.fontSize = '24px';
+                marker = new mapboxgl.Marker(el);
+            } else {
+                marker = new mapboxgl.Marker({ color });
+            }
+            marker.setLngLat([lng, lat]).addTo(map);
+            return marker;
+        }
 
-            const freshness = payload.within_grace_period ? 'Live (updated within 1 minute)' : 'Location may be stale (older than 1 minute).';
-            statusEl.textContent = `${freshness} Last update: ${payload.location_updated_at ?? 'unknown'}`;
-        } catch (_error) {
-            loadingEl.style.display = 'block';
-            loadingEl.textContent = 'Loading runner location…';
-            statusEl.textContent = 'Network issue while fetching location. Retrying automatically.';
+        marker.setLngLat([lng, lat]);
+        return marker;
+    }
+
+    function fitTask(task) {
+        const points = [
+            [task.client_longitude, task.client_latitude],
+            [task.pickup_longitude, task.pickup_latitude],
+            [task.dropoff_longitude, task.dropoff_latitude]
+        ].filter((point) => point[0] !== null && point[1] !== null);
+
+        if (points.length === 0) {
+            return;
+        }
+
+        if (points.length === 1) {
+            map.flyTo({ center: points[0], zoom: 14 });
+            return;
+        }
+
+        const bounds = new mapboxgl.LngLatBounds(points[0], points[0]);
+        points.slice(1).forEach((point) => bounds.extend(point));
+        map.fitBounds(bounds, { padding: 50, duration: 700 });
+    }
+
+    async function pollRunner(taskId) {
+        clearRunnerPolling();
+        const poll = async () => {
+            try {
+                const response = await fetch(`runner_location.php?task_id=${encodeURIComponent(taskId)}`, { credentials: 'same-origin' });
+                if (!response.ok) {
+                    return;
+                }
+                const payload = await response.json();
+                runnerMarker = setMarker(runnerMarker, payload.longitude, payload.latitude, null, '🏃');
+                if (payload.longitude !== null && payload.latitude !== null) {
+                    summaryEl.textContent = `Runner live for task #${taskId}. Last update: ${payload.location_updated_at ?? 'unknown'}.`;
+                }
+            } catch (_error) {
+                // ignore transient polling failures
+            }
+        };
+
+        await poll();
+        runnerPoller = setInterval(poll, 5000);
+    }
+
+    function focusTask(taskId, trackRunner = false) {
+        const task = tasks.find((entry) => entry.id === taskId);
+        if (!task) {
+            return;
+        }
+
+        activeTaskId = taskId;
+        document.querySelectorAll('[data-task-card-id]').forEach((card) => {
+            card.classList.toggle('task-feed__item--selected', Number(card.getAttribute('data-task-card-id')) === taskId);
+        });
+
+        clientMarker = setMarker(clientMarker, task.client_longitude, task.client_latitude, '#0a66c2');
+        pickupMarker = setMarker(pickupMarker, task.pickup_longitude, task.pickup_latitude, '#2563eb');
+        dropoffMarker = setMarker(dropoffMarker, task.dropoff_longitude, task.dropoff_latitude, '#059669');
+        summaryEl.textContent = `${task.title} · ${task.status} · ${task.zone_name}`;
+        fitTask(task);
+
+        if (trackRunner && task.runner_id !== null) {
+            pollRunner(taskId);
+        } else {
+            clearRunnerPolling();
         }
     }
 
-    buttons.forEach((button) => {
-        button.addEventListener('click', () => {
-            activeTaskId = button.getAttribute('data-task-id');
-            modal.style.display = 'flex';
-            ensureMap();
-            if (!map) return;
-            clearPolling();
-            loadRunnerLocation();
-            pollingTimer = setInterval(loadRunnerLocation, 5000);
-            setTimeout(() => map.resize(), 100);
-        });
+    focusButtons.forEach((button) => {
+        button.addEventListener('click', () => focusTask(Number(button.getAttribute('data-task-id'))));
+    });
+
+    trackButtons.forEach((button) => {
+        button.addEventListener('click', () => focusTask(Number(button.getAttribute('data-task-id')), true));
+    });
+
+    map.on('load', () => {
+        if (firstTask) {
+            focusTask(firstTask.id, firstTask.runner_id !== null);
+        }
     });
 })();
 </script>
