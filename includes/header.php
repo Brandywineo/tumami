@@ -6,16 +6,18 @@ $flash = getFlash();
 <header class="header">
     <div class="container header__inner">
         <div class="logo"><a href="index.php" class="logo__link"><?php echo h(appName()); ?></a></div>
-        <button
-            type="button"
-            class="nav-toggle"
-            aria-expanded="false"
-            aria-controls="site-nav"
-            aria-label="Toggle navigation"
-            data-nav-toggle
-        >
-            ☰
-        </button>
+        <?php if (!isAuthenticated()): ?>
+            <button
+                type="button"
+                class="nav-toggle"
+                aria-expanded="false"
+                aria-controls="site-nav"
+                aria-label="Toggle navigation"
+                data-nav-toggle
+            >
+                ☰
+            </button>
+        <?php endif; ?>
         <nav class="nav" id="site-nav" aria-label="Main navigation" data-nav>
             <?php if (isAuthenticated()): ?>
                 <a href="dashboard_client.php">Client Dashboard</a>

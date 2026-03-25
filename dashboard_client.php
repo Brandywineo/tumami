@@ -50,7 +50,7 @@ $mapboxToken = trim((string) (getenv('MAPBOX_PUBLIC_TOKEN') ?: ''));
 </main>
 <?php
 $bottomNavRole = 'client';
-$bottomNavActive = 'my_errands';
+$bottomNavActive = 'map';
 require __DIR__ . '/includes/bottom_nav.php';
 ?>
 <script>
@@ -241,16 +241,18 @@ window.TUMAMI_IS_AUTHENTICATED = true;
         }
     }
 
-    function connectStream() {
-        if (stream) {
-            stream.close();
-        }
+    async function refreshMap() {
+        try {
+            const response = await fetch('stream_client_map.php', {
+                credentials: 'same-origin',
+                cache: 'no-store'
+            });
+            if (!response.ok) {
+                throw new Error('Failed to fetch map snapshot');
+            }
 
-        stream = new EventSource('stream_client_map.php');
-
-        stream.addEventListener('map', (event) => {
-            const payload = JSON.parse(event.data);
-            upsertClientDot(payload.client.latitude, payload.client.longitude);
+            const payload = await response.json();
+            upsertClientDot(payload.client?.latitude ?? null, payload.client?.longitude ?? null);
 
             if (payload.mode === 'active_task') {
                 clearDiscoveryMarkers();
@@ -266,20 +268,14 @@ window.TUMAMI_IS_AUTHENTICATED = true;
                 upsertRunnerMarkers(payload.runners || []);
                 statusEl.textContent = `Live discovery: ${payload.runners?.length ?? 0} runners nearby · ${new Date().toLocaleTimeString()}`;
             }
-        });
-
-        stream.addEventListener('end', () => {
-            statusEl.textContent = 'Refreshing live feed…';
-            connectStream();
-        });
-
-        stream.onerror = () => {
-            statusEl.textContent = 'Connection issue, reconnecting…';
-            setTimeout(connectStream, 2000);
-        };
+        } catch (_error) {
+            statusEl.textContent = 'Connection issue, retrying…';
+        } finally {
+            setTimeout(refreshMap, 5000);
+        }
     }
 
-    connectStream();
+    refreshMap();
 
     if (!navigator.geolocation) {
         statusEl.textContent = 'Geolocation unavailable on this browser.';

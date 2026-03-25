@@ -14,15 +14,15 @@ $settingsDrawerItems = [];
 
 if ($role === 'client') {
     $items = [
-        ['id' => 'my_errands', 'label' => 'My Errands', 'href' => 'dashboard_client.php'],
-        ['id' => 'runners', 'label' => 'Runners', 'href' => 'active_runners.php'],
+        ['id' => 'map', 'label' => 'Map', 'href' => 'dashboard_client.php'],
+        ['id' => 'errands', 'label' => 'Errands', 'href' => 'client_errands.php'],
         ['id' => 'wallet', 'label' => 'Wallet', 'href' => 'topup.php'],
         ['id' => 'settings', 'label' => 'Settings', 'href' => '#'],
     ];
 
     $settingsDrawerItems = [
         ['label' => 'Client Dashboard', 'href' => 'dashboard_client.php'],
-        ['label' => 'My Tasks', 'href' => 'client_tasks.php'],
+        ['label' => 'Errands', 'href' => 'client_errands.php'],
         ['label' => 'Runner Dashboard', 'href' => 'dashboard_runner.php'],
         ['label' => 'Browse Tasks', 'href' => 'browse_tasks.php'],
         ['label' => 'Active Runners', 'href' => 'active_runners.php'],
@@ -33,15 +33,15 @@ if ($role === 'client') {
     ];
 } elseif ($role === 'runner') {
     $items = [
-        ['id' => 'my_tasks', 'label' => 'My Tasks', 'href' => 'dashboard_runner.php'],
-        ['id' => 'available_tasks', 'label' => 'Available Tasks', 'href' => 'browse_tasks.php'],
+        ['id' => 'map', 'label' => 'Map', 'href' => 'dashboard_runner.php'],
+        ['id' => 'tasks', 'label' => 'Tasks', 'href' => 'runner_tasks.php'],
         ['id' => 'wallet', 'label' => 'Wallet', 'href' => 'topup.php'],
         ['id' => 'settings', 'label' => 'Settings', 'href' => '#'],
     ];
 
     $settingsDrawerItems = [
         ['label' => 'Client Dashboard', 'href' => 'dashboard_client.php'],
-        ['label' => 'My Tasks', 'href' => 'client_tasks.php'],
+        ['label' => 'Tasks', 'href' => 'runner_tasks.php'],
         ['label' => 'Runner Dashboard', 'href' => 'dashboard_runner.php'],
         ['label' => 'Browse Tasks', 'href' => 'browse_tasks.php'],
         ['label' => 'Active Runners', 'href' => 'active_runners.php'],
