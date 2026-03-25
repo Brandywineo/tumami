@@ -92,7 +92,7 @@ $queryParams = [
 </section>
 <?php
 $bottomNavRole = 'client';
-$bottomNavActive = 'runners';
+$bottomNavActive = 'errands';
 require __DIR__ . '/includes/bottom_nav.php';
 require __DIR__ . '/includes/footer.php';
 ?>
