@@ -52,11 +52,10 @@ $runners = $cache->remember($cacheKey, $cacheTtlSeconds, static function () use 
             if ($timestamp !== false) {
                 $isOnline = (time() - $timestamp) <= $onlineWindowSeconds;
             }
-        }
 
-        if (!$isOnline) {
-            return null;
-        }
+            if (!$isOnline) {
+                return null;
+            }
 
         return [
             'id' => (int) $runner['id'],
