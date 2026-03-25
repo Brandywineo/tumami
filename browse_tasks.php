@@ -73,7 +73,7 @@ require __DIR__ . '/includes/footer.php';
     const gridEl = document.getElementById('runner-jobs-grid');
     const statusEl = document.getElementById('runner-jobs-feed-status');
     const zoneId = <?php echo json_encode($zoneId, JSON_THROW_ON_ERROR); ?>;
-    let stream = null;
+
 
     const escapeHtml = (value) => String(value ?? '')
         .replaceAll('&', '&amp;')
@@ -103,39 +103,35 @@ require __DIR__ . '/includes/footer.php';
         `;
     };
 
-    function connectFeed() {
-        if (stream) {
-            stream.close();
-        }
+    const query = zoneId !== null ? `?zone_id=${encodeURIComponent(String(zoneId))}` : '';
 
-        const query = zoneId !== null ? `?zone_id=${encodeURIComponent(String(zoneId))}` : '';
-        stream = new EventSource(`stream_runner_jobs.php${query}`);
+    async function refreshFeed() {
+        try {
+            const response = await fetch(`stream_runner_jobs.php${query}`, {
+                credentials: 'same-origin',
+                cache: 'no-store'
+            });
+            if (!response.ok) {
+                throw new Error('Failed to fetch runner jobs feed');
+            }
 
-        stream.addEventListener('jobs', (event) => {
-            const payload = JSON.parse(event.data);
+            const payload = await response.json();
             const jobs = payload.jobs || [];
             statusEl.textContent = `Live jobs: ${payload.count ?? jobs.length} · ${new Date().toLocaleTimeString()}`;
 
             if (jobs.length === 0) {
                 gridEl.innerHTML = '<p>No posted tasks at the moment.</p>';
-                return;
+            } else {
+                gridEl.innerHTML = jobs.map(renderTaskCard).join('');
             }
-
-            gridEl.innerHTML = jobs.map(renderTaskCard).join('');
-        });
-
-        stream.addEventListener('end', () => {
-            statusEl.textContent = 'Refreshing jobs feed…';
-            connectFeed();
-        });
-
-        stream.onerror = () => {
-            statusEl.textContent = 'Jobs feed reconnecting…';
-            setTimeout(connectFeed, 2000);
-        };
+        } catch (_error) {
+            statusEl.textContent = 'Jobs feed retrying…';
+        } finally {
+            setTimeout(refreshFeed, 5000);
+        }
     }
 
-    connectFeed();
+    refreshFeed();
 })();
 </script>
 </body>

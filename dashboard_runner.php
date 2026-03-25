@@ -181,30 +181,29 @@ window.TUMAMI_CSRF_TOKEN = <?php echo json_encode(csrf_token(), JSON_THROW_ON_ER
         src.setData({ type: 'FeatureCollection', features });
     }
 
-    function connectStream() {
-        if (stream) stream.close();
-        stream = new EventSource('stream_runner_map.php');
+    async function refreshMap() {
+        try {
+            const response = await fetch('stream_runner_map.php', {
+                credentials: 'same-origin',
+                cache: 'no-store'
+            });
+            if (!response.ok) {
+                throw new Error('Failed to fetch map snapshot');
+            }
 
-        stream.addEventListener('map', (event) => {
-            const payload = JSON.parse(event.data);
-            updateRunnerMarker(payload.runner.latitude, payload.runner.longitude);
-            setClientDot(payload.client.latitude, payload.client.longitude);
-            setJobsDots(payload.jobs);
+            const payload = await response.json();
+            updateRunnerMarker(payload.runner?.latitude ?? null, payload.runner?.longitude ?? null);
+            setClientDot(payload.client?.latitude ?? null, payload.client?.longitude ?? null);
+            setJobsDots(payload.jobs || []);
             mapStatusEl.textContent = `Live: ${payload.jobs?.length ?? 0} jobs nearby · ${new Date().toLocaleTimeString()}`;
-        });
-
-        stream.addEventListener('end', () => {
-            mapStatusEl.textContent = 'Refreshing live feed…';
-            connectStream();
-        });
-
-        stream.onerror = () => {
-            mapStatusEl.textContent = 'Connection issue, reconnecting…';
-            setTimeout(connectStream, 2000);
-        };
+        } catch (_error) {
+            mapStatusEl.textContent = 'Connection issue, retrying…';
+        } finally {
+            setTimeout(refreshMap, 5000);
+        }
     }
 
-    connectStream();
+    refreshMap();
 
     async function setAvailability(isAvailable) {
         if (!availabilityStatusEl || !availabilityOnBtn || !availabilityOffBtn) {

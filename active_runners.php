@@ -134,7 +134,7 @@ require __DIR__ . '/includes/footer.php';
     if (params.lat !== null) query.set('lat', String(params.lat));
     if (params.lng !== null) query.set('lng', String(params.lng));
 
-    let stream = null;
+
 
     const escapeHtml = (value) => String(value ?? '')
         .replaceAll('&', '&amp;')
@@ -162,38 +162,33 @@ require __DIR__ . '/includes/footer.php';
         `;
     };
 
-    function connectFeed() {
-        if (stream) {
-            stream.close();
-        }
+    async function refreshFeed() {
+        try {
+            const response = await fetch(`stream_online_runners.php?${query.toString()}`, {
+                credentials: 'same-origin',
+                cache: 'no-store'
+            });
+            if (!response.ok) {
+                throw new Error('Failed to fetch online runners feed');
+            }
 
-        stream = new EventSource(`stream_online_runners.php?${query.toString()}`);
-
-        stream.addEventListener('runners', (event) => {
-            const payload = JSON.parse(event.data);
+            const payload = await response.json();
             const runners = payload.runners || [];
             statusEl.textContent = `Live online runners: ${payload.count ?? runners.length} · ${new Date().toLocaleTimeString()}`;
 
             if (runners.length === 0) {
                 gridEl.innerHTML = '<p>No active runners found for this filter.</p>';
-                return;
+            } else {
+                gridEl.innerHTML = runners.map(renderRunnerCard).join('');
             }
-
-            gridEl.innerHTML = runners.map(renderRunnerCard).join('');
-        });
-
-        stream.addEventListener('end', () => {
-            statusEl.textContent = 'Refreshing online runners feed…';
-            connectFeed();
-        });
-
-        stream.onerror = () => {
-            statusEl.textContent = 'Online runners feed reconnecting…';
-            setTimeout(connectFeed, 2000);
-        };
+        } catch (_error) {
+            statusEl.textContent = 'Online runners feed retrying…';
+        } finally {
+            setTimeout(refreshFeed, 5000);
+        }
     }
 
-    connectFeed();
+    refreshFeed();
 })();
 </script>
 </body>
