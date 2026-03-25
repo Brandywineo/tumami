@@ -6,28 +6,29 @@ require __DIR__ . '/includes/bootstrap.php';
 require __DIR__ . '/db/database.php';
 
 use App\Repositories\TaskRepository;
+use App\Services\FilesystemCache;
 
 requireRole(['runner', 'both']);
 
-ignore_user_abort(true);
-set_time_limit(0);
-
-header('Content-Type: text/event-stream');
-header('Cache-Control: no-cache, no-store, must-revalidate');
-header('Connection: keep-alive');
-header('X-Accel-Buffering: no');
+header('Content-Type: application/json');
+header('Cache-Control: no-store, no-cache, must-revalidate');
 
 $zoneId = isset($_GET['zone_id']) && $_GET['zone_id'] !== '' ? (int) $_GET['zone_id'] : null;
 $runnerId = (int) currentUserId();
 $repo = new TaskRepository($pdo);
+$cache = new FilesystemCache();
+$cacheTtlSeconds = 10;
 
-$startedAt = time();
-$maxRuntimeSeconds = 55;
+$cacheKey = sprintf(
+    'stream_runner_jobs:v2:runner=%d:zone=%s',
+    $runnerId,
+    $zoneId === null ? 'all' : (string) $zoneId
+);
 
-while (!connection_aborted()) {
+$jobs = $cache->remember($cacheKey, $cacheTtlSeconds, static function () use ($repo, $runnerId, $zoneId): array {
     $tasks = $repo->browsePostedForRunner($runnerId, $zoneId);
 
-    $jobs = array_map(static function (array $task): array {
+    return array_map(static function (array $task): array {
         return [
             'id' => (int) $task['id'],
             'title' => (string) $task['title'],
@@ -39,30 +40,12 @@ while (!connection_aborted()) {
             'is_runner_zone' => (int) ($task['is_runner_zone'] ?? 0),
         ];
     }, $tasks);
+});
 
-    $payload = [
-        'server_time' => gmdate('c'),
-        'jobs' => $jobs,
-        'count' => count($jobs),
-    ];
+$payload = [
+    'server_time' => gmdate('c'),
+    'jobs' => $jobs,
+    'count' => count($jobs),
+];
 
-    echo "event: jobs\n";
-    echo 'data: ' . json_encode($payload, JSON_THROW_ON_ERROR) . "\n\n";
-
-    if (function_exists('ob_get_level') && ob_get_level() > 0) {
-        @ob_flush();
-    }
-    flush();
-
-    if ((time() - $startedAt) >= $maxRuntimeSeconds) {
-        echo "event: end\n";
-        echo "data: {}\n\n";
-        if (function_exists('ob_get_level') && ob_get_level() > 0) {
-            @ob_flush();
-        }
-        flush();
-        break;
-    }
-
-    sleep(2);
-}
+echo json_encode($payload, JSON_THROW_ON_ERROR);

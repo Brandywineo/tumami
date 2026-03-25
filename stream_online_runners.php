@@ -6,16 +6,12 @@ require __DIR__ . '/includes/bootstrap.php';
 require __DIR__ . '/db/database.php';
 
 use App\Repositories\UserRepository;
+use App\Services\FilesystemCache;
 
 requireRole(['client', 'both']);
 
-ignore_user_abort(true);
-set_time_limit(0);
-
-header('Content-Type: text/event-stream');
-header('Cache-Control: no-cache, no-store, must-revalidate');
-header('Connection: keep-alive');
-header('X-Accel-Buffering: no');
+header('Content-Type: application/json');
+header('Cache-Control: no-store, no-cache, must-revalidate');
 
 $zoneId = isset($_GET['zone_id']) && $_GET['zone_id'] !== '' ? (int) $_GET['zone_id'] : null;
 $sort = $_GET['sort'] ?? 'rating';
@@ -33,14 +29,22 @@ if ($lng !== null && ($lng < -180 || $lng > 180)) {
 }
 
 $repo = new UserRepository($pdo);
+$cache = new FilesystemCache();
+$cacheTtlSeconds = 10;
 $onlineWindowSeconds = 90;
-$startedAt = time();
-$maxRuntimeSeconds = 55;
 
-while (!connection_aborted()) {
+$cacheKey = sprintf(
+    'stream_online_runners:v2:zone=%s:sort=%s:lat=%s:lng=%s',
+    $zoneId === null ? 'all' : (string) $zoneId,
+    $sort,
+    $lat === null ? 'none' : number_format(round($lat, 3), 3, '.', ''),
+    $lng === null ? 'none' : number_format(round($lng, 3), 3, '.', '')
+);
+
+$runners = $cache->remember($cacheKey, $cacheTtlSeconds, static function () use ($repo, $zoneId, $sort, $lat, $lng, $onlineWindowSeconds): array {
     $rows = $repo->activeRunners($zoneId, $sort, $lat, $lng);
 
-    $runners = array_values(array_filter(array_map(static function (array $runner) use ($onlineWindowSeconds): ?array {
+    return array_values(array_filter(array_map(static function (array $runner) use ($onlineWindowSeconds): ?array {
         $updatedAt = $runner['location_updated_at'] ?? null;
         $isOnline = false;
         if ($updatedAt) {
@@ -67,30 +71,12 @@ while (!connection_aborted()) {
             'location_updated_at' => $updatedAt,
         ];
     }, $rows)));
+});
 
-    $payload = [
-        'server_time' => gmdate('c'),
-        'runners' => $runners,
-        'count' => count($runners),
-    ];
+$payload = [
+    'server_time' => gmdate('c'),
+    'runners' => $runners,
+    'count' => count($runners),
+];
 
-    echo "event: runners\n";
-    echo 'data: ' . json_encode($payload, JSON_THROW_ON_ERROR) . "\n\n";
-
-    if (function_exists('ob_get_level') && ob_get_level() > 0) {
-        @ob_flush();
-    }
-    flush();
-
-    if ((time() - $startedAt) >= $maxRuntimeSeconds) {
-        echo "event: end\n";
-        echo "data: {}\n\n";
-        if (function_exists('ob_get_level') && ob_get_level() > 0) {
-            @ob_flush();
-        }
-        flush();
-        break;
-    }
-
-    sleep(2);
-}
+echo json_encode($payload, JSON_THROW_ON_ERROR);

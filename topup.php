@@ -7,9 +7,11 @@ require __DIR__ . '/db/database.php';
 
 use App\Services\WalletService;
 
-requireRole(['client', 'both']);
+requireRole(['client', 'runner', 'both']);
 
 $userId = (int) currentUserId();
+$role = (string) currentUserRole();
+$dashboardUrl = $role === 'runner' ? 'dashboard_runner.php' : 'dashboard_client.php';
 $wallet = new WalletService($pdo);
 $balances = $wallet->balances($userId);
 $errors = [];
@@ -33,7 +35,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ]);
 
         setFlash('success', 'Wallet topped up successfully.');
-        redirect('dashboard_client.php');
+                redirect($dashboardUrl);
     }
 }
 ?>
@@ -60,10 +62,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <?php echo csrf_field(); ?>
             <p><label>Amount (KES)<br><input type="number" step="0.01" min="1" name="amount" required style="width:100%; padding:10px;"></label></p>
             <button class="cta-button" type="submit">Add Balance</button>
-            <a href="dashboard_client.php" class="cta-button" style="margin-left:10px; background:#6b7280;">Back</a>
+            <a href="<?php echo h($dashboardUrl); ?>" class="cta-button" style="margin-left:10px; background:#6b7280;">Back</a>
         </form>
     </div>
 </section>
+<?php
+$bottomNavRole = $role === 'runner' ? 'runner' : 'client';
+$bottomNavActive = 'wallet';
+require __DIR__ . '/includes/bottom_nav.php';
+?>
 <?php require __DIR__ . '/includes/footer.php'; ?>
 </body>
 </html>
