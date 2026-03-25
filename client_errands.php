@@ -25,10 +25,10 @@ $lat = isset($client['latitude']) && $client['latitude'] !== null ? (float) $cli
 $lng = isset($client['longitude']) && $client['longitude'] !== null ? (float) $client['longitude'] : null;
 $runners = $userRepo->activeRunners($zoneId, 'rating', $lat, $lng);
 
-function renderErrands(array $items): void
+function renderErrandCards(array $items): void
 {
     if ($items === []) {
-        echo '<p>No errands in this section yet.</p>';
+        echo '<p class="list-empty">No errands in this section yet.</p>';
         return;
     }
 
@@ -53,34 +53,53 @@ function renderErrands(array $items): void
 </head>
 <body>
 <?php require __DIR__ . '/includes/header.php'; ?>
-<section class="section section--compact">
-    <div class="container container--mobile-dense">
-        <h2>Errands</h2>
+<section class="section section--compact app-listing">
+    <div class="container container--mobile-dense app-listing__container">
+        <article class="card card--compact app-listing__hero">
+            <h2 class="dashboard-title">Errands</h2>
+            <p class="dashboard-subtitle">Manage your active errands and discover nearby runners from your current area.</p>
+            <a href="post_task.php" class="cta-button cta-button--block">Create Errand</a>
+        </article>
 
-        <h3 class="section-label">Active Errands</h3>
-        <div class="grid"><?php renderErrands($activeErrands); ?></div>
+        <article class="card card--compact app-listing__section">
+            <div class="app-listing__section-header">
+                <h3>Active Errands</h3>
+                <span class="app-listing__chip"><?php echo count($activeErrands); ?></span>
+            </div>
+            <div class="grid grid--dashboard"><?php renderErrandCards($activeErrands); ?></div>
+        </article>
 
-        <h3 class="section-label">Past Errands</h3>
-        <div class="grid"><?php renderErrands($pastErrands); ?></div>
+        <article class="card card--compact app-listing__section">
+            <div class="app-listing__section-header">
+                <h3>Available Runners Near You</h3>
+                <span class="app-listing__chip"><?php echo count($runners); ?></span>
+            </div>
+            <div class="grid grid--dashboard">
+                <?php if ($runners === []): ?>
+                    <p class="list-empty">No active runners found in your area right now.</p>
+                <?php endif; ?>
+                <?php foreach ($runners as $runner): ?>
+                    <article class="card card--compact">
+                        <h3><?php echo h((string) ($runner['full_name'] ?? 'Runner')); ?></h3>
+                        <p><strong>Area:</strong> <?php echo h((string) ($runner['active_zone_name'] ?? 'Unspecified')); ?></p>
+                        <p><strong>Vehicle:</strong> <?php echo h((string) ($runner['vehicle_type'] ?? 'walking')); ?></p>
+                        <p><strong>Rating:</strong> <?php echo number_format((float) ($runner['rating'] ?? 0), 2); ?> (<?php echo (int) ($runner['rating_count'] ?? 0); ?>)</p>
+                        <?php if (isset($runner['distance_km']) && $runner['distance_km'] !== null): ?>
+                            <p><strong>Distance:</strong> <?php echo number_format((float) $runner['distance_km'], 2); ?> km</p>
+                        <?php endif; ?>
+                        <p><a href="post_task.php" class="cta-button cta-button--block">Post Errand</a></p>
+                    </article>
+                <?php endforeach; ?>
+            </div>
+        </article>
 
-        <h3 class="section-label">Active Runners Nearby</h3>
-        <div class="grid">
-            <?php if ($runners === []): ?>
-                <p>No active runners found in your area right now.</p>
-            <?php endif; ?>
-            <?php foreach ($runners as $runner): ?>
-                <article class="card card--compact">
-                    <h3><?php echo h((string) ($runner['full_name'] ?? 'Runner')); ?></h3>
-                    <p><strong>Area:</strong> <?php echo h((string) ($runner['active_zone_name'] ?? 'Unspecified')); ?></p>
-                    <p><strong>Vehicle:</strong> <?php echo h((string) ($runner['vehicle_type'] ?? 'walking')); ?></p>
-                    <p><strong>Rating:</strong> <?php echo number_format((float) ($runner['rating'] ?? 0), 2); ?> (<?php echo (int) ($runner['rating_count'] ?? 0); ?>)</p>
-                    <?php if (isset($runner['distance_km']) && $runner['distance_km'] !== null): ?>
-                        <p><strong>Distance:</strong> <?php echo number_format((float) $runner['distance_km'], 2); ?> km</p>
-                    <?php endif; ?>
-                    <p><a href="post_task.php" class="cta-button">Post Errand</a></p>
-                </article>
-            <?php endforeach; ?>
-        </div>
+        <article class="card card--compact app-listing__section">
+            <div class="app-listing__section-header">
+                <h3>Past Errands</h3>
+                <span class="app-listing__chip"><?php echo count($pastErrands); ?></span>
+            </div>
+            <div class="grid grid--dashboard"><?php renderErrandCards($pastErrands); ?></div>
+        </article>
     </div>
 </section>
 <?php

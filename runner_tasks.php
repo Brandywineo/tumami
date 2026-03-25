@@ -17,10 +17,10 @@ $activeStatuses = ['accepted', 'in_progress', 'awaiting_confirmation'];
 $activeTasks = array_values(array_filter($runnerTasks, static fn (array $task): bool => in_array((string) $task['status'], $activeStatuses, true)));
 $availableTasks = $taskRepo->browsePostedForRunner($runnerId);
 
-function renderRunnerTasks(array $items, bool $showAccept = false): void
+function renderRunnerTaskCards(array $items, bool $showAccept = false): void
 {
     if ($items === []) {
-        echo '<p>No tasks in this section yet.</p>';
+        echo '<p class="list-empty">No tasks in this section yet.</p>';
         return;
     }
 
@@ -38,7 +38,7 @@ function renderRunnerTasks(array $items, bool $showAccept = false): void
             echo '<form method="post" action="accept_task.php">';
             echo csrf_field();
             echo '<input type="hidden" name="task_id" value="' . (int) $task['id'] . '">';
-            echo '<button class="cta-button" type="submit">Accept Task</button>';
+            echo '<button class="cta-button cta-button--block" type="submit">Accept Task</button>';
             echo '</form>';
         }
 
@@ -56,15 +56,29 @@ function renderRunnerTasks(array $items, bool $showAccept = false): void
 </head>
 <body>
 <?php require __DIR__ . '/includes/header.php'; ?>
-<section class="section section--compact">
-    <div class="container container--mobile-dense">
-        <h2>Tasks</h2>
+<section class="section section--compact app-listing">
+    <div class="container container--mobile-dense app-listing__container">
+        <article class="card card--compact app-listing__hero">
+            <h2 class="dashboard-title">Tasks</h2>
+            <p class="dashboard-subtitle">Track your active work and pick nearby available tasks quickly.</p>
+            <a href="browse_tasks.php" class="cta-button cta-button--block">Browse Available Tasks</a>
+        </article>
 
-        <h3 class="section-label">Active Tasks</h3>
-        <div class="grid"><?php renderRunnerTasks($activeTasks); ?></div>
+        <article class="card card--compact app-listing__section">
+            <div class="app-listing__section-header">
+                <h3>Active Tasks</h3>
+                <span class="app-listing__chip"><?php echo count($activeTasks); ?></span>
+            </div>
+            <div class="grid grid--dashboard"><?php renderRunnerTaskCards($activeTasks); ?></div>
+        </article>
 
-        <h3 class="section-label">Available Tasks</h3>
-        <div class="grid"><?php renderRunnerTasks($availableTasks, true); ?></div>
+        <article class="card card--compact app-listing__section">
+            <div class="app-listing__section-header">
+                <h3>Available Tasks</h3>
+                <span class="app-listing__chip"><?php echo count($availableTasks); ?></span>
+            </div>
+            <div class="grid grid--dashboard"><?php renderRunnerTaskCards($availableTasks, true); ?></div>
+        </article>
     </div>
 </section>
 <?php

@@ -43,8 +43,19 @@ $jobs = $cache->remember($cacheKey, $cacheTtlSeconds, static function () use ($t
             $lng = (float) $task['dropoff_longitude'];
         }
 
-        return $jobs;
-    });
+        if ($lat === null || $lng === null) {
+            continue;
+        }
+
+        $jobs[] = [
+            'id' => (int) $task['id'],
+            'title' => (string) $task['title'],
+            'latitude' => $lat,
+            'longitude' => $lng,
+            'zone_name' => (string) ($task['zone_name'] ?? ''),
+            'runner_fee' => (float) $task['runner_fee'],
+        ];
+    }
 
     return $jobs;
 });

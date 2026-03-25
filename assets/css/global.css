@@ -658,3 +658,63 @@ html[data-theme='dark'] .dashboard-hero {
         padding-bottom: 74px;
     }
 }
+
+
+.app-listing__container {
+    display: grid;
+    gap: 12px;
+}
+
+.app-listing__hero {
+    display: grid;
+    gap: 10px;
+}
+
+.app-listing__section {
+    display: grid;
+    gap: 10px;
+}
+
+.app-listing__section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+}
+
+.app-listing__section-header h3 {
+    margin: 0;
+}
+
+.app-listing__chip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 30px;
+    height: 26px;
+    border-radius: 999px;
+    padding: 0 10px;
+    font-size: 12px;
+    font-weight: 700;
+    background: rgba(10, 102, 194, 0.12);
+    color: var(--brand-primary);
+}
+
+.list-empty {
+    margin: 0;
+    color: var(--muted-text);
+}
+
+@media (max-width: 991px) {
+    .header .nav {
+        display: none;
+    }
+
+    .header .nav-toggle {
+        display: none;
+    }
+
+    body:not(.dashboard-app) .header .nav-toggle {
+        display: inline-flex;
+    }
+}
