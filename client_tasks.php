@@ -61,7 +61,7 @@ function renderTaskItems(array $items): void
 </section>
 <?php
 $bottomNavRole = 'client';
-$bottomNavActive = 'my_errands';
+$bottomNavActive = 'errands';
 require __DIR__ . '/includes/bottom_nav.php';
 require __DIR__ . '/includes/footer.php';
 ?>

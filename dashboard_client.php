@@ -50,7 +50,7 @@ $mapboxToken = trim((string) (getenv('MAPBOX_PUBLIC_TOKEN') ?: ''));
 </main>
 <?php
 $bottomNavRole = 'client';
-$bottomNavActive = 'my_errands';
+$bottomNavActive = 'map';
 require __DIR__ . '/includes/bottom_nav.php';
 ?>
 <script>

@@ -64,7 +64,7 @@ $zones = $pdo->query('SELECT id, name FROM zones WHERE is_active = 1 ORDER BY na
 </section>
 <?php
 $bottomNavRole = 'runner';
-$bottomNavActive = 'available_tasks';
+$bottomNavActive = 'tasks';
 require __DIR__ . '/includes/bottom_nav.php';
 require __DIR__ . '/includes/footer.php';
 ?>
