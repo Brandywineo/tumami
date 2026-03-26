@@ -42,20 +42,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <title>Login | Tumami</title>
     <link rel="stylesheet" href="assets/css/global.css">
 </head>
-<body>
-<?php require __DIR__ . '/includes/header.php'; ?>
-<section class="section">
-    <div class="container" style="max-width:560px;">
-        <h2>Login</h2>
-        <?php if ($error): ?><div class="card" style="border-left:4px solid #d63031; margin-bottom:16px;"><?php echo h($error); ?></div><?php endif; ?>
-        <form class="card" method="post">
-            <?php echo csrf_field(); ?>
-            <p><label>Email<br><input type="email" name="email" required style="width:100%;padding:10px;"></label></p>
-            <p><label>Password<br><input type="password" name="password" required style="width:100%;padding:10px;"></label></p>
-            <button class="cta-button" type="submit">Login</button>
-        </form>
+<body class="auth-screen">
+<main class="auth-screen__main">
+    <div class="auth-brand">
+        <div class="auth-brand__mark">T</div>
+        <span class="auth-brand__name">Tumami</span>
     </div>
-</section>
-<?php require __DIR__ . '/includes/footer.php'; ?>
+
+    <section class="auth-card">
+        <h1 class="auth-card__title">Welcome back</h1>
+        <p class="auth-card__subtitle">Sign in to continue.</p>
+
+        <?php if ($error): ?><p class="auth-alert auth-alert--error"><?php echo h($error); ?></p><?php endif; ?>
+
+        <form method="post" class="auth-form">
+            <?php echo csrf_field(); ?>
+            <label>Email
+                <input type="email" name="email" required value="<?php echo h((string) ($_POST['email'] ?? '')); ?>">
+            </label>
+            <label>Password
+                <input type="password" name="password" required>
+            </label>
+            <button class="cta-button cta-button--block" type="submit">Sign In</button>
+        </form>
+
+        <p class="auth-card__switch">No account yet? <a href="register.php">Create one</a></p>
+    </section>
+</main>
 </body>
 </html>
