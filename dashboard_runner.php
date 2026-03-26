@@ -35,11 +35,11 @@ $mapboxToken = trim((string) (getenv('MAPBOX_PUBLIC_TOKEN') ?: ''));
 <html lang="en">
 <head>
     <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Runner Dashboard | Tumami</title>
+    <title>Runner Map | Tumami</title>
     <link rel="stylesheet" href="assets/css/global.css">
 </head>
 <body class="dashboard-app dashboard-app--runner">
-<main class="dashboard-app__shell" aria-label="Runner dashboard app screen">
+<main class="dashboard-app__shell" aria-label="Runner map app screen">
     <div class="container container--mobile-dense dashboard-app__content">
         <article class="dashboard-hero card card--compact dashboard-app__hero">
             <h2 class="dashboard-title">Welcome, <?php echo h($user['full_name'] ?? 'Runner'); ?> 🛵</h2>

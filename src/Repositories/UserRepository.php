@@ -79,6 +79,20 @@ class UserRepository
         ]);
     }
 
+    public function setRole(int $userId, string $role): void
+    {
+        $stmt = $this->pdo->prepare('UPDATE users SET role = :role, updated_at = NOW() WHERE id = :user_id LIMIT 1');
+        $stmt->execute([
+            'role' => $role,
+            'user_id' => $userId,
+        ]);
+
+        if (in_array($role, ['runner', 'both'], true)) {
+            $profileStmt = $this->pdo->prepare('INSERT INTO runner_profiles (user_id, is_available) SELECT :user_id, 1 FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM runner_profiles WHERE user_id = :user_id)');
+            $profileStmt->execute(['user_id' => $userId]);
+        }
+    }
+
     public function activeRunners(?int $zoneId = null, string $sort = 'rating', ?float $latitude = null, ?float $longitude = null): array
     {
         $where = 'rp.is_available = 1';

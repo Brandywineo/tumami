@@ -9,7 +9,7 @@ use App\Flows\Auth\RegistrationFlow;
 use App\Repositories\UserRepository;
 
 if (isAuthenticated()) {
-    redirect('dashboard_client.php');
+    redirect('role_select.php');
 }
 
 $errors = [];
@@ -18,16 +18,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!csrf_validate($_POST['_csrf'] ?? null)) {
         $errors[] = 'Security validation failed. Please refresh and try again.';
     } else {
+        $_POST['role'] = 'client';
         $flow = new RegistrationFlow(new UserRepository($pdo));
         $result = $flow->register($_POST);
 
         if (!$result['ok']) {
             $errors = $result['errors'];
         } else {
-            loginUser((int) $result['user_id'], $result['role']);
+            loginUser((int) $result['user_id'], 'client');
             unset($_SESSION['_csrf_token']);
-            setFlash('success', 'Welcome to Tumami. Your account has been created.');
-            redirect($result['role'] === 'runner' ? 'dashboard_runner.php' : 'dashboard_client.php');
+            setFlash('success', 'Welcome to Tumami. Select how you want to use the app.');
+            redirect('role_select.php');
         }
     }
 }
@@ -37,38 +38,47 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Register | Tumami</title>
+    <title>Sign Up | Tumami</title>
     <link rel="stylesheet" href="assets/css/global.css">
 </head>
-<body>
-<?php require __DIR__ . '/includes/header.php'; ?>
-<section class="section">
-    <div class="container" style="max-width:680px;">
-        <h2>Create your account</h2>
+<body class="auth-screen">
+<main class="auth-screen__main">
+    <div class="auth-brand">
+        <div class="auth-brand__mark">T</div>
+        <span class="auth-brand__name">Tumami</span>
+    </div>
+
+    <section class="auth-card">
+        <h1 class="auth-card__title">Create your account</h1>
+        <p class="auth-card__subtitle">Join Tumami and get errands done fast.</p>
+
         <?php if ($errors): ?>
-            <div class="card" style="border-left:4px solid #d63031; margin-bottom:16px;">
+            <div class="auth-alert auth-alert--error">
                 <?php foreach ($errors as $error): ?>
-                    <p><?php echo h($error); ?></p>
+                    <p style="margin:0 0 6px;"><?php echo h($error); ?></p>
                 <?php endforeach; ?>
             </div>
         <?php endif; ?>
-        <form class="card" method="post">
+
+        <form method="post" class="auth-form">
             <?php echo csrf_field(); ?>
-            <p><label>Full name<br><input type="text" name="full_name" required style="width:100%;padding:10px;"></label></p>
-            <p><label>Email<br><input type="email" name="email" required style="width:100%;padding:10px;"></label></p>
-            <p><label>Phone<br><input type="text" name="phone" required style="width:100%;padding:10px;"></label></p>
-            <p><label>Role<br>
-                <select name="role" style="width:100%;padding:10px;">
-                    <option value="client">Client</option>
-                    <option value="runner">Runner</option>
-                    <option value="both">Both</option>
-                </select>
-            </label></p>
-            <p><label>Password<br><input type="password" name="password" required style="width:100%;padding:10px;"></label></p>
-            <button class="cta-button" type="submit">Register</button>
+            <label>Full name
+                <input type="text" name="full_name" required value="<?php echo h((string) ($_POST['full_name'] ?? '')); ?>">
+            </label>
+            <label>Email
+                <input type="email" name="email" required value="<?php echo h((string) ($_POST['email'] ?? '')); ?>">
+            </label>
+            <label>Phone number
+                <input type="text" name="phone" required value="<?php echo h((string) ($_POST['phone'] ?? '')); ?>">
+            </label>
+            <label>Password
+                <input type="password" name="password" required>
+            </label>
+            <button class="cta-button cta-button--block" type="submit">Create Account</button>
         </form>
-    </div>
-</section>
-<?php require __DIR__ . '/includes/footer.php'; ?>
+
+        <p class="auth-card__switch">Already have an account? <a href="login.php">Sign in</a></p>
+    </section>
+</main>
 </body>
 </html>
