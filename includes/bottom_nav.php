@@ -14,16 +14,18 @@ $settingsDrawerItems = [];
 
 if ($role === 'client') {
     $items = [
-        ['id' => 'map', 'label' => 'Map', 'href' => 'dashboard_client.php'],
+        ['id' => 'home', 'label' => 'Home', 'href' => 'home_client.php'],
         ['id' => 'errands', 'label' => 'Errands', 'href' => 'client_errands.php'],
+        ['id' => 'map', 'label' => 'Map', 'href' => 'dashboard_client.php'],
         ['id' => 'wallet', 'label' => 'Wallet', 'href' => 'topup.php'],
-        ['id' => 'settings', 'label' => 'Settings', 'href' => '#'],
+        ['id' => 'profile', 'label' => 'Profile', 'href' => 'profile.php'],
     ];
 
     $settingsDrawerItems = [
-        ['label' => 'Client Dashboard', 'href' => 'dashboard_client.php'],
+        ['label' => 'Home', 'href' => 'home_client.php'],
+        ['label' => 'Client Map', 'href' => 'dashboard_client.php'],
         ['label' => 'Errands', 'href' => 'client_errands.php'],
-        ['label' => 'Runner Dashboard', 'href' => 'dashboard_runner.php'],
+        ['label' => 'Runner Map', 'href' => 'dashboard_runner.php'],
         ['label' => 'Browse Tasks', 'href' => 'browse_tasks.php'],
         ['label' => 'Active Runners', 'href' => 'active_runners.php'],
         ['label' => 'Top Up Wallet', 'href' => 'topup.php'],
@@ -33,20 +35,23 @@ if ($role === 'client') {
     ];
 } elseif ($role === 'runner') {
     $items = [
-        ['id' => 'map', 'label' => 'Map', 'href' => 'dashboard_runner.php'],
+        ['id' => 'home', 'label' => 'Home', 'href' => 'home_runner.php'],
         ['id' => 'tasks', 'label' => 'Tasks', 'href' => 'runner_tasks.php'],
+        ['id' => 'map', 'label' => 'Map', 'href' => 'dashboard_runner.php'],
         ['id' => 'wallet', 'label' => 'Wallet', 'href' => 'topup.php'],
-        ['id' => 'settings', 'label' => 'Settings', 'href' => '#'],
+        ['id' => 'profile', 'label' => 'Profile', 'href' => 'profile.php'],
     ];
 
     $settingsDrawerItems = [
-        ['label' => 'Client Dashboard', 'href' => 'dashboard_client.php'],
+        ['label' => 'Home', 'href' => 'home_runner.php'],
+        ['label' => 'Runner Map', 'href' => 'dashboard_runner.php'],
         ['label' => 'Tasks', 'href' => 'runner_tasks.php'],
-        ['label' => 'Runner Dashboard', 'href' => 'dashboard_runner.php'],
+        ['label' => 'Client Map', 'href' => 'dashboard_client.php'],
         ['label' => 'Browse Tasks', 'href' => 'browse_tasks.php'],
         ['label' => 'Active Runners', 'href' => 'active_runners.php'],
         ['label' => 'Top Up Wallet', 'href' => 'topup.php'],
         ['label' => 'Profile Settings', 'href' => 'settings.php'],
+        ['label' => 'Verification', 'href' => 'runner_verification.php'],
         ['label' => 'Runner Availability', 'href' => 'runner_availability.php'],
         ['label' => 'Map Settings', 'href' => 'settings.php#map-settings'],
     ];
@@ -54,19 +59,9 @@ if ($role === 'client') {
 ?>
 <nav class="bottom-nav" aria-label="Mobile quick navigation" data-bottom-nav>
     <?php foreach ($items as $item): ?>
-        <?php if ($item['id'] === 'settings'): ?>
-            <button
-                class="bottom-nav__item <?php echo $activeItem === 'settings' ? 'is-active' : ''; ?>"
-                type="button"
-                data-settings-drawer-open
-            >
-                <span class="bottom-nav__label"><?php echo h($item['label']); ?></span>
-            </button>
-        <?php else: ?>
-            <a class="bottom-nav__item <?php echo $activeItem === $item['id'] ? 'is-active' : ''; ?>" href="<?php echo h($item['href']); ?>">
-                <span class="bottom-nav__label"><?php echo h($item['label']); ?></span>
-            </a>
-        <?php endif; ?>
+        <a class="bottom-nav__item <?php echo $activeItem === $item['id'] ? 'is-active' : ''; ?> <?php echo $item['id'] === 'map' ? 'bottom-nav__item--map' : ''; ?>" href="<?php echo h($item['href']); ?>">
+            <span class="bottom-nav__label"><?php echo h($item['label']); ?></span>
+        </a>
     <?php endforeach; ?>
 </nav>
 

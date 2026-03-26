@@ -115,7 +115,28 @@ class TaskRepository
 
     public function byClient(int $clientId): array
     {
-        $stmt = $this->pdo->prepare('SELECT t.*, z.name AS zone_name, cz.name AS client_zone_name, ru.full_name AS runner_name FROM tasks t JOIN zones z ON z.id = t.zone_id LEFT JOIN zones cz ON cz.id = t.client_zone_id LEFT JOIN users ru ON ru.id = t.runner_id WHERE t.client_id = :client_id ORDER BY t.created_at DESC');
+        $stmt = $this->pdo->prepare('SELECT
+            t.*,
+            z.name AS zone_name,
+            cz.name AS client_zone_name,
+            ru.full_name AS runner_name
+        FROM tasks t
+        JOIN zones z ON z.id = t.zone_id
+        LEFT JOIN zones cz ON cz.id = t.client_zone_id
+        LEFT JOIN users ru ON ru.id = t.runner_id
+        WHERE t.client_id = :client_id
+        ORDER BY
+            CASE t.status
+                WHEN "posted" THEN 1
+                WHEN "accepted" THEN 2
+                WHEN "in_progress" THEN 3
+                WHEN "awaiting_confirmation" THEN 4
+                WHEN "completed" THEN 5
+                WHEN "cancelled" THEN 6
+                WHEN "disputed" THEN 7
+                ELSE 8
+            END ASC,
+            t.created_at DESC');
         $stmt->execute(['client_id' => $clientId]);
 
         return $stmt->fetchAll();
