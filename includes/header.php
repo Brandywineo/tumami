@@ -20,12 +20,13 @@ $flash = getFlash();
         <?php endif; ?>
         <nav class="nav" id="site-nav" aria-label="Main navigation" data-nav>
             <?php if (isAuthenticated()): ?>
-                <a href="dashboard_client.php">Client Dashboard</a>
-                <a href="dashboard_runner.php">Runner Dashboard</a>
+                <a href="home_client.php">Home</a>
+                <a href="dashboard_client.php">Client Map</a>
+                <a href="dashboard_runner.php">Runner Map</a>
                 <a href="browse_tasks.php">Browse Tasks</a>
                 <a href="active_runners.php">Active Runners</a>
                 <a href="topup.php">Top Up</a>
-                <a href="settings.php">Settings</a>
+                <a href="profile.php">Profile</a>
                 <form method="post" action="logout.php" class="logout-form">
                     <?php echo csrf_field(); ?>
                     <button type="submit" class="logout-button">Logout</button>
