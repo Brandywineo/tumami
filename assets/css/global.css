@@ -533,6 +533,25 @@ html[data-theme='dark'] .dashboard-hero {
     font-weight: 700;
 }
 
+.bottom-nav__item--map {
+    margin-top: -22px;
+    width: 60px;
+    height: 60px;
+    border-radius: 999px;
+    background: var(--brand-primary);
+    color: #fff !important;
+    justify-self: center;
+    align-self: center;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 8px 20px rgba(10, 102, 194, 0.35);
+}
+
+.bottom-nav__item--map .bottom-nav__label {
+    font-weight: 700;
+}
+
 .bottom-nav__item.is-active {
     color: var(--brand-primary);
     font-weight: 700;
