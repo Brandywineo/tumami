@@ -6,99 +6,107 @@ require __DIR__ . '/includes/bootstrap.php';
 require __DIR__ . '/db/database.php';
 
 use App\Repositories\TaskRepository;
-use App\Repositories\UserRepository;
 
 requireRole(['client', 'both']);
 
 $userId = (int) currentUserId();
 $taskRepo = new TaskRepository($pdo);
-$userRepo = new UserRepository($pdo);
-
 $tasks = $taskRepo->byClient($userId);
-$activeStatuses = ['posted', 'accepted', 'in_progress', 'awaiting_confirmation'];
-$activeErrands = array_values(array_filter($tasks, static fn (array $task): bool => in_array((string) $task['status'], $activeStatuses, true)));
-$pastErrands = array_values(array_filter($tasks, static fn (array $task): bool => in_array((string) $task['status'], ['completed', 'cancelled', 'disputed'], true)));
 
-$client = $userRepo->findById($userId);
-$zoneId = isset($client['current_zone_id']) && $client['current_zone_id'] !== null ? (int) $client['current_zone_id'] : null;
-$lat = isset($client['latitude']) && $client['latitude'] !== null ? (float) $client['latitude'] : null;
-$lng = isset($client['longitude']) && $client['longitude'] !== null ? (float) $client['longitude'] : null;
-$runners = $userRepo->activeRunners($zoneId, 'rating', $lat, $lng);
+$statusLabels = [
+    'posted' => 'Posted',
+    'accepted' => 'Accepted',
+    'in_progress' => 'In Progress',
+    'awaiting_confirmation' => 'Awaiting Confirmation',
+    'completed' => 'Completed',
+    'cancelled' => 'Cancelled',
+    'disputed' => 'Disputed',
+];
 
-function renderErrandCards(array $items): void
-{
-    if ($items === []) {
-        echo '<p class="list-empty">No errands in this section yet.</p>';
-        return;
-    }
+$statusClasses = [
+    'posted' => 'task-status--posted',
+    'accepted' => 'task-status--accepted',
+    'in_progress' => 'task-status--in-progress',
+    'awaiting_confirmation' => 'task-status--awaiting',
+    'completed' => 'task-status--completed',
+    'cancelled' => 'task-status--cancelled',
+    'disputed' => 'task-status--cancelled',
+];
 
-    foreach ($items as $task) {
-        echo '<article class="card card--compact">';
-        echo '<h3>' . h((string) ($task['title'] ?? 'Untitled errand')) . '</h3>';
-        echo '<p><strong>Status:</strong> ' . h((string) ($task['status'] ?? 'unknown')) . '</p>';
-        echo '<p><strong>Area:</strong> ' . h((string) ($task['zone_name'] ?? 'N/A')) . '</p>';
-        echo '<p><strong>Runner:</strong> ' . h((string) ($task['runner_name'] ?? 'Unassigned')) . '</p>';
-        echo '<p><strong>Fee:</strong> KES ' . number_format((float) ($task['runner_fee'] ?? 0), 2) . '</p>';
-        echo '</article>';
-    }
-}
+$stageIndex = [
+    'posted' => 0,
+    'accepted' => 1,
+    'in_progress' => 2,
+    'awaiting_confirmation' => 3,
+    'completed' => 4,
+];
+
+$activeCount = count(array_filter($tasks, static fn (array $task): bool => in_array((string) $task['status'], ['posted', 'accepted', 'in_progress', 'awaiting_confirmation'], true)));
+$completedCount = count(array_filter($tasks, static fn (array $task): bool => (string) $task['status'] === 'completed'));
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Errands | Tumami</title>
+    <title>My Errands | Tumami</title>
     <link rel="stylesheet" href="assets/css/global.css">
 </head>
 <body>
-<?php require __DIR__ . '/includes/header.php'; ?>
-<section class="section section--compact app-listing">
-    <div class="container container--mobile-dense app-listing__container">
-        <article class="card card--compact app-listing__hero">
-            <h2 class="dashboard-title">Errands</h2>
-            <p class="dashboard-subtitle">Manage your active errands and discover nearby runners from your current area.</p>
-            <a href="post_task.php" class="cta-button cta-button--block">Create Errand</a>
+<section class="section section--compact app-shell-page">
+    <div class="container container--mobile-dense app-shell__container">
+        <article class="card card--compact app-shell__header">
+            <h1 class="dashboard-title">My Errands</h1>
+            <p class="dashboard-subtitle">Incomplete errands are listed first. Older errands appear lower.</p>
         </article>
 
-        <article class="card card--compact app-listing__section">
-            <div class="app-listing__section-header">
-                <h3>Active Errands</h3>
-                <span class="app-listing__chip"><?php echo count($activeErrands); ?></span>
-            </div>
-            <div class="grid grid--dashboard"><?php renderErrandCards($activeErrands); ?></div>
-        </article>
+        <div class="grid app-stats-grid">
+            <article class="card card--compact"><p class="dashboard-subtitle">Total</p><p class="stat-value"><?php echo count($tasks); ?></p></article>
+            <article class="card card--compact"><p class="dashboard-subtitle">Incomplete</p><p class="stat-value"><?php echo $activeCount; ?></p></article>
+            <article class="card card--compact"><p class="dashboard-subtitle">Completed</p><p class="stat-value"><?php echo $completedCount; ?></p></article>
+            <article class="card card--compact"><a href="post_task.php" class="cta-button cta-button--block">New Errand</a></article>
+        </div>
 
         <article class="card card--compact app-listing__section">
-            <div class="app-listing__section-header">
-                <h3>Available Runners Near You</h3>
-                <span class="app-listing__chip"><?php echo count($runners); ?></span>
-            </div>
-            <div class="grid grid--dashboard">
-                <?php if ($runners === []): ?>
-                    <p class="list-empty">No active runners found in your area right now.</p>
+            <div class="task-feed" aria-live="polite">
+                <?php if ($tasks === []): ?>
+                    <p class="list-empty">No errands yet. Tap “New Errand” to create your first one.</p>
                 <?php endif; ?>
-                <?php foreach ($runners as $runner): ?>
-                    <article class="card card--compact">
-                        <h3><?php echo h((string) ($runner['full_name'] ?? 'Runner')); ?></h3>
-                        <p><strong>Area:</strong> <?php echo h((string) ($runner['active_zone_name'] ?? 'Unspecified')); ?></p>
-                        <p><strong>Vehicle:</strong> <?php echo h((string) ($runner['vehicle_type'] ?? 'walking')); ?></p>
-                        <p><strong>Rating:</strong> <?php echo number_format((float) ($runner['rating'] ?? 0), 2); ?> (<?php echo (int) ($runner['rating_count'] ?? 0); ?>)</p>
-                        <?php if (isset($runner['distance_km']) && $runner['distance_km'] !== null): ?>
-                            <p><strong>Distance:</strong> <?php echo number_format((float) $runner['distance_km'], 2); ?> km</p>
+
+                <?php foreach ($tasks as $task): ?>
+                    <?php
+                        $status = (string) ($task['status'] ?? 'posted');
+                        $statusLabel = $statusLabels[$status] ?? ucfirst($status);
+                        $statusClass = $statusClasses[$status] ?? 'task-status--posted';
+                        $currentStage = $stageIndex[$status] ?? -1;
+                        $createdAt = isset($task['created_at']) && $task['created_at'] ? date('M j, Y g:i A', strtotime((string) $task['created_at'])) : 'Recently';
+                    ?>
+                    <article class="task-feed__card">
+                        <div class="task-feed__row">
+                            <div class="task-feed__body">
+                                <p class="task-feed__title"><?php echo h((string) ($task['title'] ?? 'Untitled errand')); ?></p>
+                                <p class="task-feed__meta"><?php echo h((string) ($task['zone_name'] ?? 'No area')); ?> · <?php echo h($createdAt); ?></p>
+                                <?php if (!empty($task['runner_name'])): ?>
+                                    <p class="task-feed__meta">Runner: <?php echo h((string) $task['runner_name']); ?></p>
+                                <?php endif; ?>
+                            </div>
+                            <span class="task-feed__amount">KES <?php echo number_format((float) ($task['runner_fee'] ?? 0), 2); ?></span>
+                        </div>
+
+                        <div class="task-feed__footer">
+                            <span class="task-status-chip <?php echo h($statusClass); ?>"><?php echo h($statusLabel); ?></span>
+                        </div>
+
+                        <?php if ($currentStage >= 0): ?>
+                            <div class="task-progress">
+                                <?php for ($i = 0; $i < 5; $i++): ?>
+                                    <span class="task-progress__bar <?php echo $i <= $currentStage ? 'is-active' : ''; ?>"></span>
+                                <?php endfor; ?>
+                            </div>
                         <?php endif; ?>
-                        <p><a href="post_task.php" class="cta-button cta-button--block">Post Errand</a></p>
                     </article>
                 <?php endforeach; ?>
             </div>
-        </article>
-
-        <article class="card card--compact app-listing__section">
-            <div class="app-listing__section-header">
-                <h3>Past Errands</h3>
-                <span class="app-listing__chip"><?php echo count($pastErrands); ?></span>
-            </div>
-            <div class="grid grid--dashboard"><?php renderErrandCards($pastErrands); ?></div>
         </article>
     </div>
 </section>
@@ -106,7 +114,6 @@ function renderErrandCards(array $items): void
 $bottomNavRole = 'client';
 $bottomNavActive = 'errands';
 require __DIR__ . '/includes/bottom_nav.php';
-require __DIR__ . '/includes/footer.php';
 ?>
 </body>
 </html>
