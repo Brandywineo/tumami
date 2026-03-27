@@ -81,15 +81,49 @@ class WalletService
     {
         $stmt = $this->pdo->prepare('SELECT
             COALESCE(SUM(CASE WHEN direction = "credit" AND status = "completed" THEN amount ELSE 0 END), 0) AS total_credit,
-            COALESCE(SUM(CASE WHEN direction = "debit" AND status = "completed" THEN amount ELSE 0 END), 0) AS total_debit
+            COALESCE(SUM(CASE WHEN direction = "debit" AND status = "completed" THEN amount ELSE 0 END), 0) AS total_debit,
+            COALESCE(SUM(CASE WHEN direction = "debit" AND status = "pending" THEN amount ELSE 0 END), 0) AS pending_debit,
+            COALESCE(SUM(CASE WHEN direction = "credit" AND status = "pending" THEN amount ELSE 0 END), 0) AS pending_credit
             FROM wallet_transactions WHERE user_id = :user_id');
         $stmt->execute(['user_id' => $userId]);
-        $row = $stmt->fetch() ?: ['total_credit' => 0, 'total_debit' => 0];
+        $row = $stmt->fetch() ?: ['total_credit' => 0, 'total_debit' => 0, 'pending_debit' => 0, 'pending_credit' => 0];
 
+        $available = (float) $row['total_credit'] - (float) $row['total_debit'];
         return [
             'total_credit' => (float) $row['total_credit'],
             'total_debit' => (float) $row['total_debit'],
-            'available' => (float) $row['total_credit'] - (float) $row['total_debit'],
+            'pending_debit' => (float) $row['pending_debit'],
+            'pending_credit' => (float) $row['pending_credit'],
+            'available' => $available,
+            'withdrawable' => max(0, $available - (float) $row['pending_debit']),
         ];
+    }
+
+    public function recordPendingTopup(int $userId, float $amount, string $reference): void
+    {
+        $stmt = $this->pdo->prepare('INSERT INTO wallet_transactions (user_id, task_id, direction, type, amount, status, reference) VALUES (:user_id, NULL, "credit", "deposit", :amount, "pending", :reference)');
+        $stmt->execute([
+            'user_id' => $userId,
+            'amount' => $amount,
+            'reference' => $reference,
+        ]);
+    }
+
+    public function recordPendingWithdrawal(int $userId, float $amount, string $reference): void
+    {
+        $stmt = $this->pdo->prepare('INSERT INTO wallet_transactions (user_id, task_id, direction, type, amount, status, reference) VALUES (:user_id, NULL, "debit", "withdrawal", :amount, "pending", :reference)');
+        $stmt->execute([
+            'user_id' => $userId,
+            'amount' => $amount,
+            'reference' => $reference,
+        ]);
+    }
+
+    public function recentTransactions(int $userId, int $limit = 20): array
+    {
+        $limit = max(1, min(100, $limit));
+        $stmt = $this->pdo->prepare('SELECT id, direction, type, amount, status, reference, created_at FROM wallet_transactions WHERE user_id = :user_id ORDER BY created_at DESC, id DESC LIMIT ' . $limit);
+        $stmt->execute(['user_id' => $userId]);
+        return $stmt->fetchAll();
     }
 }

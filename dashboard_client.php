@@ -27,11 +27,11 @@ $mapboxToken = trim((string) (getenv('MAPBOX_PUBLIC_TOKEN') ?: ''));
 <html lang="en">
 <head>
     <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Client Dashboard | Tumami</title>
+    <title>Client Map | Tumami</title>
     <link rel="stylesheet" href="assets/css/global.css">
 </head>
 <body class="dashboard-app dashboard-app--client">
-<main class="dashboard-app__shell" aria-label="Client dashboard app screen">
+<main class="dashboard-app__shell" aria-label="Client map app screen">
     <div class="container container--mobile-dense dashboard-app__content">
         <div class="dashboard-hero card card--compact dashboard-app__hero">
             <h2 class="dashboard-title">Welcome, <?php echo h($user['full_name'] ?? 'Client'); ?> 👋</h2>
