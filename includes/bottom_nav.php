@@ -17,7 +17,7 @@ if ($role === 'client') {
         ['id' => 'home', 'label' => 'Home', 'href' => 'home_client.php'],
         ['id' => 'errands', 'label' => 'Errands', 'href' => 'client_errands.php'],
         ['id' => 'map', 'label' => 'Map', 'href' => 'dashboard_client.php'],
-        ['id' => 'wallet', 'label' => 'Wallet', 'href' => 'topup.php'],
+        ['id' => 'wallet', 'label' => 'Wallet', 'href' => 'wallet.php'],
         ['id' => 'profile', 'label' => 'Profile', 'href' => 'profile.php'],
     ];
 
@@ -28,7 +28,7 @@ if ($role === 'client') {
         ['label' => 'Runner Map', 'href' => 'dashboard_runner.php'],
         ['label' => 'Browse Tasks', 'href' => 'browse_tasks.php'],
         ['label' => 'Active Runners', 'href' => 'active_runners.php'],
-        ['label' => 'Top Up Wallet', 'href' => 'topup.php'],
+        ['label' => 'Wallet', 'href' => 'wallet.php'],
         ['label' => 'Profile Settings', 'href' => 'settings.php'],
         ['label' => 'Runner Filters', 'href' => 'active_runners.php'],
         ['label' => 'Map Settings', 'href' => 'settings.php#map-settings'],
@@ -38,7 +38,7 @@ if ($role === 'client') {
         ['id' => 'home', 'label' => 'Home', 'href' => 'home_runner.php'],
         ['id' => 'tasks', 'label' => 'Tasks', 'href' => 'runner_tasks.php'],
         ['id' => 'map', 'label' => 'Map', 'href' => 'dashboard_runner.php'],
-        ['id' => 'wallet', 'label' => 'Wallet', 'href' => 'topup.php'],
+        ['id' => 'wallet', 'label' => 'Wallet', 'href' => 'wallet.php'],
         ['id' => 'profile', 'label' => 'Profile', 'href' => 'profile.php'],
     ];
 
@@ -49,7 +49,7 @@ if ($role === 'client') {
         ['label' => 'Client Map', 'href' => 'dashboard_client.php'],
         ['label' => 'Browse Tasks', 'href' => 'browse_tasks.php'],
         ['label' => 'Active Runners', 'href' => 'active_runners.php'],
-        ['label' => 'Top Up Wallet', 'href' => 'topup.php'],
+        ['label' => 'Wallet', 'href' => 'wallet.php'],
         ['label' => 'Profile Settings', 'href' => 'settings.php'],
         ['label' => 'Verification', 'href' => 'runner_verification.php'],
         ['label' => 'Runner Availability', 'href' => 'runner_availability.php'],
