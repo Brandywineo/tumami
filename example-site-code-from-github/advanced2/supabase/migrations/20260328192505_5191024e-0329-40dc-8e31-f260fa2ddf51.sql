@@ -1,0 +1,1 @@
+DROP POLICY IF EXISTS "Runners can insert own payouts" ON public.payout_records;
